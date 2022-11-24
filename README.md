@@ -1,5 +1,5 @@
 # sptf2tdl
-A simple script to port Spotify playlists to TIDAL. It saves a lot of time especially for larger playlists. It is not perfect, but it works well for 95% of songs.
+A simple script to port Spotify playlists to TIDAL. It saves a lot of time especially for larger playlists. It is not perfect, but it works well for 95% of songs including classical.
 
 
 ### How to run
