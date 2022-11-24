@@ -1,4 +1,4 @@
-import asyncio, shelve, re
+import asyncio, nest_asyncio, shelve, re
 
 import spotify, tidalapi
 
@@ -9,6 +9,7 @@ from typing import List, Dict, Any
 from time import sleep
 
 load_dotenv()
+nest_asyncio.apply() # work-around for recurrency of async functions
 
 client_id = getenv('client_id')
 client_secret = getenv('client_secret')
@@ -88,7 +89,8 @@ def tidal_crosscheck(tracks: List[FilteredTrackData], playlist: spotify.Playlist
     elif overwrite_playlist in ('n','no'):
       choose_another_playlist = input('\nDo you want to choose another playlist? (Y/N): ').lower()
       if choose_another_playlist in ('y', 'yes'):
-        asyncio.run(main())
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(main())
       elif choose_another_playlist in ('n', 'no'):
         print('\nThanks for using this program!')
       else:
@@ -193,7 +195,8 @@ async def main():
       another_id = input(f' -> There are no public playlists by user {user.display_name} ({user_id}). Choose another user ID? (Y/N): ').lower()
       if another_id in ('y','yes'):
         set_user_id()
-        asyncio.run(main())
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(main())
       elif another_id in ('n','no'):
         print('\nThanks for using this program!')
       else:
