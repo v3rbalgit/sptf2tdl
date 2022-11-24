@@ -13,9 +13,6 @@ load_dotenv()
 client_id = getenv('client_id')
 client_secret = getenv('client_secret')
 user_id = ''
-# user_id = '11124161068' # Boris Vereš
-tidal_user = getenv('tidal_user')
-tidal_pass = getenv('tidal_pass')
 
 
 def set_user_id():
@@ -116,7 +113,6 @@ def tidal_crosscheck(tracks: List[FilteredTrackData], playlist: spotify.Playlist
       tracks_found = session.search(search_query, models=[tidalapi.media.Track], limit=100)
       track_isrc_found = tuple(filter(lambda tr: tr.isrc == track['isrc'], tracks_found['tracks']))
       track_name_found = list(filter(lambda tr: SequenceMatcher(None, tr.name.lower(), track['name'].lower()).ratio() > 0.6 and SequenceMatcher(None, [a.name for a in tr.artists], artists).ratio() > 0.4, tracks_found['tracks']))
-      # track_name_found = sorted(track_name_found, key=lambda tr: (SequenceMatcher(None, tr.name.lower(), track['name'].lower()).ratio() + SequenceMatcher(None, [a.name for a in tr.artists], artists).ratio()) / 2, reverse=True)
 
       if len(track_isrc_found) != 0:
         new_playlist.add([track_isrc_found[0].id])        # found by isrc => 1:1 match
@@ -223,3 +219,4 @@ The program does not port duplicates. If resulting TIDAL playlist is shorter tha
 
 # KNOWN ISSUES:
 # - won't add duplicates into playlist (by isrc)
+# - the search query can probably be optimized for better accuracy
