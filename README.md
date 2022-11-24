@@ -2,7 +2,7 @@
 A simple script to port Spotify playlists to TIDAL. It saves a lot of time especially for larger playlists. It is not perfect, but it works well for 95% of songs.
 
 
-### How run
+### How to run
 
 1. In order to run the program you will need to create an **.env** file with `client_id="XYZ"` and `client_secret="XYZ"` values in order to access the Spotify API. You can generate these via the [Spotify developer portal](https://developer.spotify.com/dashboard/applications)  
 2. After you run the program for the first time, you will be asked to login to TIDAL with the link provided.  
