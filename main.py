@@ -6,25 +6,27 @@ from dotenv import load_dotenv
 from os import getenv
 from difflib import SequenceMatcher
 from typing import List, Dict, Any
+from time import sleep
 
 load_dotenv()
 
 client_id = getenv('client_id')
 client_secret = getenv('client_secret')
+user_id = ''
 # user_id = '11124161068' # Boris Vereš
 tidal_user = getenv('tidal_user')
 tidal_pass = getenv('tidal_pass')
 
 
-def get_user_id() -> str:
+def set_user_id():
+  global user_id
   user_id = input('\nEnter user ID: ')
 
   try:
     int(user_id)
-    return user_id
   except ValueError:
     print(" -> User ID must be a number!")
-    get_user_id()
+    set_user_id()
 
 
 def get_playlist_number(max: int) -> int:
@@ -81,8 +83,21 @@ def tidal_crosscheck(tracks: List[FilteredTrackData], playlist: spotify.Playlist
   found_playlist = tuple(filter(lambda pl: pl.name == playlist.name, playlists))
 
   if len(found_playlist) != 0:
-    print(f' -> Playlist "{playlist.name}" already exists!')
-    # TODO: repeat playlist selection or update playlist
+    overwrite_playlist = input(f' -> Playlist "{playlist.name}" already exists! Do you want to overwrite it? (Y/N): ').lower()
+    if overwrite_playlist in ('y','yes'):
+      found_playlist[0].delete()
+      sleep(1)  # Allow extra time for playlist to get deleted from TIDAL
+      tidal_crosscheck(tracks, playlist)
+    elif overwrite_playlist in ('n','no'):
+      choose_another_playlist = input('\nDo you want to choose another playlist? (Y/N): ').lower()
+      if choose_another_playlist in ('y', 'yes'):
+        asyncio.run(main())
+      elif choose_another_playlist in ('n', 'no'):
+        print('\nThanks for using this program!')
+      else:
+        print('-> No valid answer provided, quitting...')
+    else:
+      print('-> No valid answer provided, quitting...')
   else:
     print(f'\nPorting playlist "{playlist.name}"...')
 
@@ -94,7 +109,7 @@ def tidal_crosscheck(tracks: List[FilteredTrackData], playlist: spotify.Playlist
       artists = [str(artist) for artist in track["artists"]]
       length_formatted = f'{int((track["length"]/1000)/60)}:{str(int((track["length"]/1000)%60)).zfill(2)}'
       filtered_name = re.sub(r'\((.*?)\)', '', track["name"]).strip().lower()  # remove everything in brackets (including)
-      search_query = f'{filtered_name}' if len(filtered_name.split()) > 5 else f'{filtered_name} {artists[0]}' # for shorter track names use first artist name as well
+      search_query = f'{filtered_name}' if len(filtered_name.split()) > 4 else f'{filtered_name} {artists[0]}' # for shorter track names use first artist name as well
 
       print(f' [{i + 1}/{len(tracks)}]: "{track["name"]}" by {", ".join(artists)} ({length_formatted}) ', end='')
 
@@ -166,8 +181,9 @@ async def select_playlist(client: spotify.Client, playlists: List[spotify.Playli
 #################
 # MAIN FUNCTION #
 #################
-async def main(user_id: str):
+async def main():
   async with spotify.Client(client_id, client_secret) as client:
+    global user_id
     user = await client.get_user(user_id)
     playlists = await user.get_all_playlists()
 
@@ -180,14 +196,14 @@ async def main(user_id: str):
     if len(list(playlists_to_select.keys())) == 0:
       another_id = input(f' -> There are no public playlists by user {user.display_name} ({user_id}). Choose another user ID? (Y/N): ').lower()
       if another_id in ('y','yes'):
-        user_id = get_user_id()
-        asyncio.run(main(user_id))
+        set_user_id()
+        asyncio.run(main())
       elif another_id in ('n','no'):
         print('\nThanks for using this program!')
       else:
         print('-> No valid answer provided, quitting...')
     else:
-      print(f'\nPublic playlists by {user.display_name} (ID: {user_id}):')
+      print(f'\nPublic Spotify playlists by {user.display_name} (ID: {user_id}):')
       await select_playlist(client, playlists_to_select)
 
 
@@ -201,9 +217,9 @@ Due to simple nature of the cross-referencing algorithm, the program may omit so
 The program does not port duplicates. If resulting TIDAL playlist is shorter than the original one on Spotify, it is due to the original playlist containing duplicates.""")
 
   # Ask user to provide a user id to start
-  user_id = get_user_id()
+  set_user_id()
 
-  asyncio.run(main(user_id))
+  asyncio.run(main())
 
 # KNOWN ISSUES:
 # - won't add duplicates into playlist (by isrc)
