@@ -1,4 +1,4 @@
-import asyncio, nest_asyncio, shelve, re
+import asyncio, nest_asyncio, shelve, re, pprint
 
 import spotify, tidalapi
 
@@ -7,13 +7,15 @@ from os import getenv
 from difflib import SequenceMatcher
 from typing import List, Dict, Any
 from time import sleep
+from collections import OrderedDict
+from itertools import chain
 
 load_dotenv()
 nest_asyncio.apply() # work-around for recurrency of async functions
 
 client_id = getenv('client_id')
 client_secret = getenv('client_secret')
-user_id = ''
+user_id = '' # 11124161068
 
 
 def set_user_id():
@@ -58,19 +60,62 @@ def handle_tidal_token(session: tidalapi.Session):
         refresh_token=tidal_login['refresh_token'],
         expiry_time=tidal_login['expiry_time'])
 
+# Replace foreign letters with english counterparts
+def replace_letters(string: str) -> str:
+  foreign_letters = 'àáâãäåçèéêëìíîïðñľĺšśčćďťžźřŕňńòóôõöùúûüýÿ'
+  english_letters = 'aaaaaaceeeeiiiidnllssccdtzzrrnnooooouuuuyy'
+  new_string = []
 
-FilteredTrackData = Dict[str, Any]
-def filter_track_data(tracks: List[spotify.Track]) -> List[FilteredTrackData]:
+  for char in string.lower():
+    if char in foreign_letters:
+      new_string.append(english_letters[foreign_letters.find(char)])
+    else:
+      new_string.append(char)
+
+  return "".join(new_string)
+
+# Manipulate a string for searching using its words
+def filter_name(string: str) -> List[str]:
+  return re.sub(r'[\:|\;|\,|\&|\(|\)|\\]',' ', replace_letters(string)).replace(" - ", " ").split()
+
+
+# Track comparison algorithm
+def compare_tracks(tracks: List[tidalapi.Track], track_name: str, artists: List[str], album_name: str) -> None | tidalapi.Track:
+  track_scores = {}
+  selected_tracks = []
+
+  # Filter every track in search results by common track name words and artist name words
+  for track in tracks:
+    common_name = list(set(track.name.split()) & set(track_name.split()))
+    if len(common_name) != 0:
+      common_artists = list(set(chain.from_iterable([artist.name.split() for artist in track.artists])) & set(chain.from_iterable([a.split() for a in artists])))
+      if len(common_artists) != 0:
+        selected_tracks.append(track)
+
+  # If there are no tracks after filtering, the searched track does not exist on TIDAL
+  if len(selected_tracks) == 0:
+    return None
+
+  # Order tracks by similarity() taking album name, artists' names and track name into equal consideration) and return first match
+  for track in selected_tracks:
+    key = SequenceMatcher(None, filter_name(track.name), filter_name(track_name)).ratio() * 0.5 + SequenceMatcher(None, [" ".join(filter_name(a.name)) for a in track.artists], [" ".join(filter_name(a)) for a in artists]).ratio() * 0.3 + SequenceMatcher(None, filter_name(track.album.name), filter_name(album_name)).ratio() * 0.2
+    track_scores[key/3] = track
+
+  ordered_tracks = OrderedDict(sorted(track_scores.items(), reverse=True))
+  return list(ordered_tracks.values())[0]
+
+
+def filter_track_data(tracks: List[spotify.Track]) -> List[Dict[str, Any]]:
   return [{
       'name': track['track']['name'],
       'artists': [artist['name'] for artist in track['track']['artists']],
-      # 'album': track['track']['album']['name'],
+      'album': track['track']['album']['name'],
       'length': track['track']['duration_ms'],
       'isrc': track['track']['external_ids']['isrc']
     } for track in tracks]
 
 
-def tidal_crosscheck(tracks: List[FilteredTrackData], playlist: spotify.Playlist) -> None:
+def tidal_crosscheck(tracks: List[Dict[str, Any]], playlist: spotify.Playlist) -> None:
   session = tidalapi.Session()
 
   handle_tidal_token(session)
@@ -102,43 +147,59 @@ def tidal_crosscheck(tracks: List[FilteredTrackData], playlist: spotify.Playlist
 
     new_playlist = user.create_playlist(playlist.name, playlist.description)
     tracks_not_found = []
-    tracks_to_check = []
 
     for i, track in enumerate(tracks):
+      track_name = track['name']
       artists = [str(artist) for artist in track["artists"]]
-      length_formatted = f'{int((track["length"]/1000)/60)}:{str(int((track["length"]/1000)%60)).zfill(2)}'
-      filtered_name = re.sub(r'\((.*?)\)', '', track["name"]).strip().lower()  # remove everything in brackets (including)
-      search_query = f'{filtered_name}' if len(filtered_name.split()) > 4 else f'{filtered_name} {artists[0]}' # for shorter track names use first artist name as well
+      length = f'{int((track["length"]/1000)/60)}:{str(int((track["length"]/1000)%60)).zfill(2)}'
+      album = track['album']
 
-      print(f' [{i + 1}/{len(tracks)}]: "{track["name"]}" by {", ".join(artists)} ({length_formatted}) ', end='')
+      print(f' [{i + 1}/{len(tracks)}]: "{track_name}" by {", ".join(artists)} ({length}) ', end='')
 
-      tracks_found = session.search(search_query, models=[tidalapi.media.Track], limit=100)
-      track_isrc_found = tuple(filter(lambda tr: tr.isrc == track['isrc'], tracks_found['tracks']))
-      track_name_found = list(filter(lambda tr: SequenceMatcher(None, tr.name.lower(), track['name'].lower()).ratio() > 0.6 and SequenceMatcher(None, [a.name for a in tr.artists], artists).ratio() > 0.4, tracks_found['tracks']))
+      # Search for exact match in first 50 results
+      search_result = session.search(f'{track_name.lower()} {" ".join(artists).lower()}', models=[tidalapi.media.Track], limit=50)
+      isrc_found = tuple(filter(lambda tr: tr.isrc == track['isrc'], search_result['tracks']))
 
-      if len(track_isrc_found) != 0:
-        new_playlist.add([track_isrc_found[0].id])        # found by isrc => 1:1 match
+      if len(isrc_found) != 0:
+        new_playlist.add([isrc_found[0].id])        # found by isrc => 1:1 match
         print('•')
-      elif len(track_name_found) != 0:
-        new_playlist.add([track_name_found[0].id])        # found by similar track name and artists
-        print('¡')
-      elif len(tracks_found['tracks']) != 0:
-        new_playlist.add([tracks_found['tracks'][0].id])  # first track that was found based on search query (might not be correct)
-        tracks_to_check.append(track)
-        print('¿')
       else:
-        tracks_not_found.append(track)                    # found nothing
-        print('×')
+        tracks_found = []
+        filtered_artists = [" ".join(filter_name(artist)) for artist in artists]
+        filtered_artists = " ".join(filtered_artists)
+        whole_phrase = filter_name(track_name) + filtered_artists.split()
+
+        # Use words in track's and artists' names to search
+        for i, word in enumerate(whole_phrase):
+          if i == 0: continue   # skip using just one word (too vague)
+          search_result = session.search(" ".join(whole_phrase[:i+1]), models=[tidalapi.media.Track], limit=i * 2)
+          isrc_found = tuple(filter(lambda tr: tr.isrc == track['isrc'], search_result['tracks']))
+
+          # Check for exact match
+          if len(isrc_found) != 0:
+            new_playlist.add([isrc_found[0].id])        # found by isrc => 1:1 match
+            print('•')
+            break
+          else:
+            # Fill list with all search results
+            tracks_found.extend(search_result['tracks'])
+
+            # When we're on the last word and still no exact match found, use the comparison algorithm
+            if word == whole_phrase[-1]:
+              found_track = compare_tracks(tracks_found, track_name, artists, album)
+
+              if found_track:
+                new_playlist.add([found_track.id])          # found by similar name and artists
+                print('•')
+              else:
+                tracks_not_found.append(track)              # found nothing (extremely rare)
+                print('×')
+
 
     # Display problems during porting
     if len(tracks_not_found) != 0:
       print(f'\nCould not find following tracks on TIDAL:')
       for track in tracks_not_found:
-        print(f' -> "{track["name"]}" by {", ".join([str(art) for art in track["artists"]])}')
-
-    if len(tracks_to_check) != 0:
-      print(f'\nFollowing tracks might not have been ported correctly:')
-      for track in tracks_to_check:
         print(f' -> "{track["name"]}" by {", ".join([str(art) for art in track["artists"]])}')
 
     print(f'\nSuccessfully ported {len(tracks) - len(tracks_not_found)} out of {len(tracks)} tracks in the "{playlist.name}" playlist!')
