@@ -11,7 +11,7 @@ from collections import OrderedDict
 from itertools import chain
 
 load_dotenv()
-nest_asyncio.apply() # work-around for recurrency of async functions
+nest_asyncio.apply() # work-around for recurrent async functions
 
 client_id = getenv('client_id')
 client_secret = getenv('client_secret')
@@ -96,9 +96,11 @@ def compare_tracks(tracks: List[tidalapi.Track], track_name: str, artists: List[
   if len(selected_tracks) == 0:
     return None
 
-  # Order tracks by similarity() taking album name, artists' names and track name into equal consideration) and return first match
+  # Order tracks by similarity(taking album name, artists' names and track name into consideration) and return closest match
   for track in selected_tracks:
-    key = SequenceMatcher(None, filter_name(track.name), filter_name(track_name)).ratio() * 0.5 + SequenceMatcher(None, [" ".join(filter_name(a.name)) for a in track.artists], [" ".join(filter_name(a)) for a in artists]).ratio() * 0.3 + SequenceMatcher(None, filter_name(track.album.name), filter_name(album_name)).ratio() * 0.2
+    key = SequenceMatcher(None, filter_name(track.name), filter_name(track_name)).ratio()
+    key += SequenceMatcher(None, [" ".join(filter_name(a.name)) for a in track.artists], [" ".join(filter_name(a)) for a in artists]).ratio()
+    key += SequenceMatcher(None, filter_name(track.album.name), filter_name(album_name)).ratio()
     track_scores[key/3] = track
 
   ordered_tracks = OrderedDict(sorted(track_scores.items(), reverse=True))
@@ -156,44 +158,35 @@ def tidal_crosscheck(tracks: List[Dict[str, Any]], playlist: spotify.Playlist) -
 
       print(f' [{i + 1}/{len(tracks)}]: "{track_name}" by {", ".join(artists)} ({length}) ', end='')
 
-      # Search for exact match in first 50 results
-      search_result = session.search(f'{track_name.lower()} {" ".join(artists).lower()}', models=[tidalapi.media.Track], limit=50)
-      isrc_found = tuple(filter(lambda tr: tr.isrc == track['isrc'], search_result['tracks']))
+      tracks_found = []
+      whole_phrase = filter_name(track_name) + list(chain.from_iterable(filter_name(artist) for artist in artists))
 
-      if len(isrc_found) != 0:
-        new_playlist.add([isrc_found[0].id])        # found by isrc => 1:1 match
-        print('•')
-      else:
-        tracks_found = []
-        filtered_artists = [" ".join(filter_name(artist)) for artist in artists]
-        filtered_artists = " ".join(filtered_artists)
-        whole_phrase = filter_name(track_name) + filtered_artists.split()
+      # Use words in track's and artists' names to search
+      for i, word in enumerate(whole_phrase):
+        if i == 0: continue   # skip using just one word (too vague)
+        search_result = session.search(" ".join(whole_phrase[:i+1]), models=[tidalapi.media.Track], limit=i * 5)
+        isrc_found = tuple(filter(lambda tr: tr.isrc == track['isrc'], search_result['tracks']))
 
-        # Use words in track's and artists' names to search
-        for i, word in enumerate(whole_phrase):
-          if i == 0: continue   # skip using just one word (too vague)
-          search_result = session.search(" ".join(whole_phrase[:i+1]), models=[tidalapi.media.Track], limit=i * 2)
-          isrc_found = tuple(filter(lambda tr: tr.isrc == track['isrc'], search_result['tracks']))
+        # Check for exact match
+        if len(isrc_found) != 0:
+          new_playlist.add([isrc_found[0].id])          # found by isrc => 1:1 match
+          print('•')
+          break
+        else:
+          # Fill list with all search results
+          tracks_found.extend(search_result['tracks'])
 
-          # Check for exact match
-          if len(isrc_found) != 0:
-            new_playlist.add([isrc_found[0].id])        # found by isrc => 1:1 match
-            print('•')
-            break
-          else:
-            # Fill list with all search results
-            tracks_found.extend(search_result['tracks'])
+          # When we're on the last word and no exact match was found, use the comparison algorithm
+          if word == whole_phrase[-1]:
+            found_track = compare_tracks(tracks_found, track_name, artists, album)
 
-            # When we're on the last word and still no exact match found, use the comparison algorithm
-            if word == whole_phrase[-1]:
-              found_track = compare_tracks(tracks_found, track_name, artists, album)
-
-              if found_track:
-                new_playlist.add([found_track.id])          # found by similar name and artists
-                print('•')
-              else:
-                tracks_not_found.append(track)              # found nothing (extremely rare)
-                print('×')
+            if found_track:
+              new_playlist.add([found_track.id])          # found by similar name and artists
+              print('•')
+              break
+            else:
+              tracks_not_found.append(track)              # found nothing (extremely rare)
+              print('×')
 
 
     # Display problems during porting
