@@ -1,14 +1,13 @@
-import asyncio, nest_asyncio, shelve, re, pprint
+import asyncio, nest_asyncio, shelve, re
 
 import spotify, tidalapi
 
 from dotenv import load_dotenv
 from os import getenv
-from difflib import SequenceMatcher
 from typing import List, Dict, Any
 from time import sleep
-from collections import OrderedDict
 from itertools import chain
+from difflib import SequenceMatcher
 
 load_dotenv()
 nest_asyncio.apply() # work-around for recurrent async functions
@@ -29,7 +28,7 @@ def set_user_id():
     set_user_id()
 
 
-def get_playlist_number(max: int) -> int:
+def get_playlist_number(max: str) -> int:
   playlist_number = input('\nSelect a playlist number: ')
 
   try:
@@ -76,35 +75,43 @@ def replace_letters(string: str) -> str:
 
 # Manipulate a string for searching using its words
 def filter_name(string: str) -> List[str]:
-  return re.sub(r'[\:|\;|\,|\&|\(|\)|\\]',' ', replace_letters(string)).replace(" - ", " ").split()
+  return re.sub(r'[\:|\;|\,|\"|\&|\(|\)|\\]',' ', replace_letters(string)).replace(" - ", " ").split()
 
 
 # Track comparison algorithm
-def compare_tracks(tracks: List[tidalapi.Track], track_name: str, artists: List[str], album_name: str) -> None | tidalapi.Track:
-  track_scores = {}
+def compare_tracks(tracks: List[tidalapi.Track], track_name: str, artists: List[str], album_name: str, track_duration: int) -> None | tidalapi.Track:
   selected_tracks = []
 
   # Filter every track in search results by common track name words and artist name words
   for track in tracks:
-    common_name = list(set(track.name.split()) & set(track_name.split()))
+    common_name = list(set(filter_name(track.name)) & set(filter_name(track_name)))
     if len(common_name) != 0:
-      common_artists = list(set(chain.from_iterable([artist.name.split() for artist in track.artists])) & set(chain.from_iterable([a.split() for a in artists])))
+      common_artists = list(set(chain.from_iterable([filter_name(artist.name) for artist in track.artists])) & set(chain.from_iterable([filter_name(a) for a in artists])))
       if len(common_artists) != 0:
-        selected_tracks.append(track)
+        selected_tracks.append({
+          'track': track,
+          'common_names': common_name,
+          'common_artists': common_artists,
+          'common_album': list(set(filter_name(track.album.name)) & set(filter_name(album_name))),
+          'duration_score': 1 - (abs(track_duration - track.duration) / track_duration)
+        })
 
-  # If there are no tracks after filtering, the searched track does not exist on TIDAL
+  # If there are no tracks after first filter, the searched track does not exist on TIDAL
   if len(selected_tracks) == 0:
     return None
 
-  # Order tracks by similarity(taking album name, artists' names and track name into consideration) and return closest match
-  for track in selected_tracks:
-    key = SequenceMatcher(None, filter_name(track.name), filter_name(track_name)).ratio()
-    key += SequenceMatcher(None, [" ".join(filter_name(a.name)) for a in track.artists], [" ".join(filter_name(a)) for a in artists]).ratio()
-    key += SequenceMatcher(None, filter_name(track.album.name), filter_name(album_name)).ratio()
-    track_scores[key/3] = track
+  # Further filtering
+  selected_tracks.sort(key=lambda x: len(x['common_names']), reverse=True)
+  selected_tracks = list(filter(lambda x: len(x['common_names']) == len(selected_tracks[0]['common_names']), selected_tracks))
+  selected_tracks.sort(key=lambda x: len(x['common_artists']), reverse=True)
+  selected_tracks = list(filter(lambda x: len(x['common_artists']) == len(selected_tracks[0]['common_artists']), selected_tracks))
+  selected_tracks.sort(key=lambda x: x['duration_score'], reverse=True)
+  selected_tracks = list(filter(lambda x: len(x['common_album']) == len(selected_tracks[0]['common_album']), selected_tracks))
 
-  ordered_tracks = OrderedDict(sorted(track_scores.items(), reverse=True))
-  return list(ordered_tracks.values())[0]
+  # Prefer master quality tracks
+  master_tracks = list(filter(lambda x: x['track'].audio_quality == tidalapi.Quality.master, selected_tracks))
+
+  return master_tracks[0]['track'] if len(master_tracks) != 0 else selected_tracks[0]['track']
 
 
 def filter_track_data(tracks: List[spotify.Track]) -> List[Dict[str, Any]]:
@@ -153,23 +160,28 @@ def tidal_crosscheck(tracks: List[Dict[str, Any]], playlist: spotify.Playlist) -
     for i, track in enumerate(tracks):
       track_name = track['name']
       artists = [str(artist) for artist in track["artists"]]
-      length = f'{int((track["length"]/1000)/60)}:{str(int((track["length"]/1000)%60)).zfill(2)}'
       album = track['album']
+      track_duration = track["length"]
+      length = f'{int((track_duration/1000)/60)}:{str(int((track_duration/1000)%60)).zfill(2)}'
 
       print(f' [{i + 1}/{len(tracks)}]: "{track_name}" by {", ".join(artists)} ({length}) ', end='')
 
       tracks_found = []
-      whole_phrase = filter_name(track_name) + list(chain.from_iterable(filter_name(artist) for artist in artists))
+      artist_list = list(chain.from_iterable(filter_name(artist) for artist in artists))
+      whole_phrase = filter_name(track_name) + artist_list
 
       # Use words in track's and artists' names to search
       for i, word in enumerate(whole_phrase):
         if i == 0: continue   # skip using just one word (too vague)
-        search_result = session.search(" ".join(whole_phrase[:i+1]), models=[tidalapi.media.Track], limit=i * 5)
+
+        search_result = session.search(" ".join(whole_phrase[:i+1]), models=[tidalapi.media.Track], limit=len(whole_phrase) - i)
         isrc_found = tuple(filter(lambda tr: tr.isrc == track['isrc'], search_result['tracks']))
 
         # Check for exact match
         if len(isrc_found) != 0:
-          new_playlist.add([isrc_found[0].id])          # found by isrc => 1:1 match
+          # Prefer master quality tracks
+          master_tracks = list(filter(lambda x: x.audio_quality == tidalapi.Quality.master, isrc_found))
+          new_playlist.add([master_tracks[0].id if len(master_tracks) != 0 else isrc_found[0].id])            # found by isrc => 1:1 match
           print('•')
           break
         else:
@@ -178,12 +190,11 @@ def tidal_crosscheck(tracks: List[Dict[str, Any]], playlist: spotify.Playlist) -
 
           # When we're on the last word and no exact match was found, use the comparison algorithm
           if word == whole_phrase[-1]:
-            found_track = compare_tracks(tracks_found, track_name, artists, album)
+            found_track = compare_tracks(tracks_found, track_name, artists, album, track_duration)
 
             if found_track:
               new_playlist.add([found_track.id])          # found by similar name and artists
               print('•')
-              break
             else:
               tracks_not_found.append(track)              # found nothing (extremely rare)
               print('×')
@@ -276,4 +287,4 @@ The program does not port duplicates. If resulting TIDAL playlist is shorter tha
 
 # KNOWN ISSUES:
 # - won't add duplicates into playlist (by isrc)
-# - the search query can probably be optimized for better accuracy
+# - works so-so on classical music
