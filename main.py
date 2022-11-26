@@ -84,9 +84,9 @@ def compare_tracks(tracks: List[tidalapi.Track], track_name: str, artists: List[
   # Filter every track in search results by common track name words and artist name words
   for track in tracks:
     common_name = list(set(filter_name(track.name)) & set(filter_name(track_name)))
-    if len(common_name) != 0:
-      common_artists = list(set(chain.from_iterable([filter_name(artist.name) for artist in track.artists])) & set(chain.from_iterable([filter_name(a) for a in artists])))
-      if len(common_artists) != 0:
+    if common_name:
+      common_artists = list(set(chain.from_iterable(filter_name(artist.name) for artist in track.artists)) & set(chain.from_iterable(filter_name(a) for a in artists)))
+      if common_artists:
         selected_tracks.append({
           'track': track,
           'common_names': common_name,
@@ -100,17 +100,16 @@ def compare_tracks(tracks: List[tidalapi.Track], track_name: str, artists: List[
     return None
 
   # Further filtering
-  selected_tracks.sort(key=lambda x: len(x['common_names']), reverse=True)
-  selected_tracks = list(filter(lambda x: len(x['common_names']) == len(selected_tracks[0]['common_names']), selected_tracks))
-  selected_tracks.sort(key=lambda x: len(x['common_artists']), reverse=True)
-  selected_tracks = list(filter(lambda x: len(x['common_artists']) == len(selected_tracks[0]['common_artists']), selected_tracks))
+  for key in ['common_names', 'common_artists']:
+    selected_tracks.sort(key=lambda x: len(x[key]), reverse=True)
+    selected_tracks = list(filter(lambda x: len(x[key]) == len(selected_tracks[0][key]), selected_tracks))
   selected_tracks.sort(key=lambda x: x['duration_score'], reverse=True)
   selected_tracks = list(filter(lambda x: len(x['common_album']) == len(selected_tracks[0]['common_album']), selected_tracks))
 
   # Prefer master quality tracks
   master_tracks = list(filter(lambda x: x['track'].audio_quality == tidalapi.Quality.master, selected_tracks))
 
-  return master_tracks[0]['track'] if len(master_tracks) != 0 else selected_tracks[0]['track']
+  return master_tracks[0]['track'] if master_tracks else selected_tracks[0]['track']
 
 
 def filter_track_data(tracks: List[spotify.Track]) -> List[Dict[str, Any]]:
@@ -133,7 +132,7 @@ def tidal_crosscheck(tracks: List[Dict[str, Any]], playlist: spotify.Playlist) -
 
   found_playlist = tuple(filter(lambda pl: pl.name == playlist.name, playlists))
 
-  if len(found_playlist) != 0:
+  if found_playlist:
     overwrite_playlist = input(f' -> Playlist "{playlist.name}" already exists! Do you want to overwrite it? (Y/N): ').lower()
     if overwrite_playlist in ('y','yes'):
       found_playlist[0].delete()
@@ -177,10 +176,10 @@ def tidal_crosscheck(tracks: List[Dict[str, Any]], playlist: spotify.Playlist) -
         isrc_found = tuple(filter(lambda tr: tr.isrc == track['isrc'], search_result['tracks']))
 
         # Check for exact match
-        if len(isrc_found) != 0:
+        if isrc_found:
           # Prefer master quality tracks
           master_tracks = list(filter(lambda x: x.audio_quality == tidalapi.Quality.master, isrc_found))
-          new_playlist.add([master_tracks[0].id if len(master_tracks) != 0 else isrc_found[0].id])            # found by isrc => 1:1 match
+          new_playlist.add([master_tracks[0].id if master_tracks else isrc_found[0].id])            # found by isrc => 1:1 match
           print('•')
           break
         else:
@@ -188,7 +187,7 @@ def tidal_crosscheck(tracks: List[Dict[str, Any]], playlist: spotify.Playlist) -
           tracks_found.extend(search_result['tracks'])
 
           # When we're on the last word and no exact match was found, use the comparison algorithm
-          if word == whole_phrase[-1]:
+          if len(whole_phrase) - 1 == i:
             found_track = compare_tracks(tracks_found, track_name, artists, album, track_duration)
 
             if found_track:
@@ -200,7 +199,7 @@ def tidal_crosscheck(tracks: List[Dict[str, Any]], playlist: spotify.Playlist) -
 
 
     # Display problems during porting
-    if len(tracks_not_found) != 0:
+    if tracks_not_found:
       print(f'\nCould not find following tracks on TIDAL:')
       for track in tracks_not_found:
         print(f' -> "{track["name"]}" by {", ".join([str(art) for art in track["artists"]])}')
@@ -285,5 +284,4 @@ The program does not port duplicates. If resulting TIDAL playlist is shorter tha
   asyncio.run(main())
 
 # KNOWN ISSUES:
-# - won't add duplicates into playlist (by isrc)
-# - works so-so on classical music
+# - will not add market restricted tracks to playlist
