@@ -7,7 +7,6 @@ from os import getenv
 from typing import List, Dict, Any
 from time import sleep
 from itertools import chain
-from difflib import SequenceMatcher
 
 load_dotenv()
 nest_asyncio.apply() # work-around for recurrent async functions
