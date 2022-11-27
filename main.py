@@ -5,7 +5,6 @@ import spotify, tidalapi
 from dotenv import load_dotenv
 from os import getenv
 from typing import List, Dict, Any
-from time import sleep
 from itertools import chain
 
 load_dotenv()
@@ -41,7 +40,7 @@ def get_playlist_number(max: str) -> int:
     print(" -> Playlist number cannot be a string!")
     get_playlist_number(max)
 
-
+# Get and set token for TIDAL API
 def handle_tidal_token(session: tidalapi.Session):
   with shelve.open('tidal_login') as tidal_login:
     if 'access_token' not in tidal_login.keys():
@@ -72,7 +71,7 @@ def replace_letters(string: str) -> str:
 
   return "".join(new_string)
 
-# Manipulate a string for searching using its words
+# Manipulate a string for searching using its words as list
 def filter_name(string: str) -> List[str]:
   return re.sub(r'[\:|\;|\,|\"|\&|\(|\)|\\]',' ', replace_letters(string)).replace(" - ", " ").split()
 
@@ -83,35 +82,33 @@ def compare_tracks(tracks: List[tidalapi.Track], track_name: str, artists: List[
 
   # Filter every track in search results by common track name words and artist name words
   for track in tracks:
-    common_name = list(set(filter_name(track.name)) & set(filter_name(track_name)))
-    if common_name:
+    common_names = list(set(filter_name(track.name)) & set(filter_name(track_name)))
+    if common_names:
       common_artists = list(set(chain.from_iterable(filter_name(artist.name) for artist in track.artists)) & set(chain.from_iterable(filter_name(a) for a in artists)))
       if common_artists:
         selected_tracks.append({
           'track': track,
-          'common_names': common_name,
+          'common_names': common_names,
           'common_artists': common_artists,
           'common_album': list(set(filter_name(track.album.name)) & set(filter_name(album_name))),
           'duration_score': 1 - (abs(track_duration - track.duration) / track_duration)
         })
 
-  # If there are no tracks after first filter, the searched track does not exist on TIDAL
   if len(selected_tracks) == 0:
     return None
 
   # Further filtering
-  for key in ['common_names', 'common_artists']:
+  for key in ['common_names', 'common_artists', 'common_album']:
     selected_tracks.sort(key=lambda x: len(x[key]), reverse=True)
     selected_tracks = list(filter(lambda x: len(x[key]) == len(selected_tracks[0][key]), selected_tracks))
   selected_tracks.sort(key=lambda x: x['duration_score'], reverse=True)
-  selected_tracks = list(filter(lambda x: len(x['common_album']) == len(selected_tracks[0]['common_album']), selected_tracks))
 
   # Prefer master quality tracks
   master_tracks = list(filter(lambda x: x['track'].audio_quality == tidalapi.Quality.master, selected_tracks))
 
   return master_tracks[0]['track'] if master_tracks else selected_tracks[0]['track']
 
-
+# Filter relevant data from Spotify to use for searching on TIDAL
 def filter_track_data(tracks: List[spotify.Track]) -> List[Dict[str, Any]]:
   return [{
       'name': track['track']['name'],
@@ -136,7 +133,6 @@ def tidal_crosscheck(tracks: List[Dict[str, Any]], playlist: spotify.Playlist) -
     overwrite_playlist = input(f' -> Playlist "{playlist.name}" already exists! Do you want to overwrite it? (Y/N): ').lower()
     if overwrite_playlist in ('y','yes'):
       found_playlist[0].delete()
-      sleep(1)  # Allow extra time for playlist to get deleted from TIDAL
       tidal_crosscheck(tracks, playlist)
     elif overwrite_playlist in ('n','no'):
       choose_another_playlist = input('\nDo you want to choose another playlist? (Y/N): ').lower()
@@ -172,7 +168,7 @@ def tidal_crosscheck(tracks: List[Dict[str, Any]], playlist: spotify.Playlist) -
       for i, word in enumerate(whole_phrase):
         if i == 0: continue   # skip using just one word (too vague)
 
-        search_result = session.search(" ".join(whole_phrase[:i+1]), models=[tidalapi.media.Track], limit=len(whole_phrase) - i)
+        search_result = session.search(" ".join(whole_phrase[:i+1]), models=[tidalapi.media.Track], limit=4 + len(whole_phrase) - i)
         isrc_found = tuple(filter(lambda tr: tr.isrc == track['isrc'], search_result['tracks']))
 
         # Check for exact match
@@ -209,12 +205,12 @@ def tidal_crosscheck(tracks: List[Dict[str, Any]], playlist: spotify.Playlist) -
 
 async def select_playlist(client: spotify.Client, playlists: List[spotify.Playlist]):
   # Print a list of owner's public playlists
-  for i, item in enumerate(playlists.items()):
-    print(f' {i + 1}: {item[0]}')
+  for i, playlist in enumerate(playlists):
+    print(f' {i + 1}: {playlist.name}')
 
   # Let user choose a playlist to port
-  playlist_number = get_playlist_number(len(list(playlists.keys())))
-  selected_playlist = list(playlists.values())[playlist_number]
+  playlist_number = get_playlist_number(len(playlists))
+  selected_playlist = playlists[playlist_number]
 
   # Get and filter playlist tracks data
   playlist_tracks = await client.http.get_playlist_tracks(selected_playlist.id, limit=100)
@@ -249,12 +245,9 @@ async def main():
     playlists = await user.get_all_playlists()
 
     # Filter playlists based on owner
-    playlists_to_select = {}
-    for playlist in playlists:
-      if playlist.owner == user:
-        playlists_to_select[playlist.name] = playlist
+    playlists = list(filter(lambda x: x.owner == user, playlists))
 
-    if len(list(playlists_to_select.keys())) == 0:
+    if len(playlists) == 0:
       another_id = input(f' -> There are no public playlists by user {user.display_name} ({user_id}). Choose another user ID? (Y/N): ').lower()
       if another_id in ('y','yes'):
         set_user_id()
@@ -266,17 +259,17 @@ async def main():
         print('-> No valid answer provided, quitting...')
     else:
       print(f'\nPublic Spotify playlists by {user.display_name} (ID: {user_id}):')
-      await select_playlist(client, playlists_to_select)
+      await select_playlist(client, playlists)
 
 
 if __name__ == '__main__':
   print('Port your SPOTIFY playlists to TIDAL!'.upper())
   print('-------------------------------------')
-  print("""README: This program will try to find exact matches of tracks from a selected playlist on Spotify and make a new playlist with matches found on TIDAL in the same order.
-If it doesn't find any exact matches, it will try to look for closest ones based on track name and artist.
-Otherwise it will grab the first one it finds. This can include unintended matches. You will get notified which matches might be bad after the process finishes.
-Due to simple nature of the cross-referencing algorithm, the program may omit some matches even if they are on TIDAL. You will be notified about these cases after the process finishes.
-The program does not port duplicates. If resulting TIDAL playlist is shorter than the original one on Spotify, it is due to the original playlist containing duplicates.""")
+  print("""
+  README: This program will try to find exact matches of tracks from a selected playlist on Spotify and make a new playlist with matches found on TIDAL in the same order.
+If it doesn't find any exact matches, it will try to look for closest ones based on track name, artist names, album name and track duration.
+Any market restricted tracks will not appear on the resulting TIDAL playlist.
+""")
 
   # Ask user to provide a user id to start
   set_user_id()
