@@ -91,7 +91,7 @@ def compare_tracks(tracks: List[tidalapi.Track], track_name: str, artists: List[
           'common_names': common_names,
           'common_artists': common_artists,
           'common_album': list(set(filter_name(track.album.name)) & set(filter_name(album_name))),
-          'duration_score': 1 - (abs(track_duration - track.duration) / track_duration)
+          'duration_score': 1 - (abs(track_duration - (track.duration * 1000)) / track_duration)
         })
 
   if len(selected_tracks) == 0:

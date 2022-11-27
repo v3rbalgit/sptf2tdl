@@ -164,3 +164,4 @@ cython_debug/
 tidal_login.bak
 tidal_login.dat
 tidal_login.dir
+.vscode/
