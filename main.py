@@ -8,11 +8,11 @@ from typing import List, Dict, Any
 from itertools import chain
 
 load_dotenv()
-nest_asyncio.apply() # work-around for recurrent async functions
+nest_asyncio.apply() # work-around for recursive async functions
 
-client_id = getenv('client_id')
-client_secret = getenv('client_secret')
-user_id = '' # 11124161068
+client_id: str | None = getenv('client_id')
+client_secret: str | None = getenv('client_secret')
+user_id: str = '' # 11124161068
 
 
 def set_user_id():
@@ -27,14 +27,14 @@ def set_user_id():
 
 
 def get_playlist_number(max: str) -> int:
-  playlist_number = input('\nSelect a playlist number: ')
+  playlist_number: str = input('\nSelect a playlist number: ')
 
   try:
     if (int(playlist_number) > int(max)) or (int(playlist_number) < 1):
       print(' -> Playlist number must be between 1 and ', max)
       get_playlist_number(max)
     else:
-      playlist_number = int(playlist_number) - 1
+      playlist_number: int = int(playlist_number) - 1
       return playlist_number
   except ValueError:
     print(" -> Playlist number cannot be a string!")
@@ -59,9 +59,9 @@ def handle_tidal_token(session: tidalapi.Session):
 
 # Replace foreign letters with english counterparts
 def replace_letters(string: str) -> str:
-  foreign_letters = 'àáâãäåçèéêëìíîïðñľĺšśčćďťžźřŕňńòóôõöùúûüýÿ'
-  english_letters = 'aaaaaaceeeeiiiidnllssccdtzzrrnnooooouuuuyy'
-  new_string = []
+  foreign_letters: str  = 'àáâãäåçèéêëìíîïðñľĺšśčćďťžźřŕňńòóôõöùúûüýÿ'
+  english_letters: str  = 'aaaaaaceeeeiiiidnllssccdtzzrrnnooooouuuuyy'
+  new_string: List[str] = []
 
   for char in string.lower():
     if char in foreign_letters:
@@ -77,21 +77,21 @@ def filter_name(string: str) -> List[str]:
 
 
 # Track comparison algorithm
-def compare_tracks(tracks: List[tidalapi.Track], track_name: str, artists: List[str], album_name: str, track_duration: int) -> None | tidalapi.Track:
-  selected_tracks = []
+def compare_tracks(tracks: List[tidalapi.Track], track_name: str, artists: List[str], album_name: str, track_duration: int) -> tidalapi.Track | None:
+  selected_tracks: List[tidalapi.Track] = []
 
   # Filter every track in search results by common track name words and artist name words
   for track in tracks:
-    common_names = list(set(filter_name(track.name)) & set(filter_name(track_name)))
+    common_names: List[str] = list(set(filter_name(track.name)) & set(filter_name(track_name)))
     if common_names:
-      common_artists = list(set(chain.from_iterable(filter_name(artist.name) for artist in track.artists)) & set(chain.from_iterable(filter_name(a) for a in artists)))
+      common_artists: List[str] = list(set(chain.from_iterable(filter_name(artist.name) for artist in track.artists)) & set(chain.from_iterable(filter_name(a) for a in artists)))
       if common_artists:
         selected_tracks.append({
           'track': track,
           'common_names': common_names,
           'common_artists': common_artists,
           'common_album': list(set(filter_name(track.album.name)) & set(filter_name(album_name))),
-          'duration_score': 1 - (abs(track_duration - (track.duration * 1000)) / track_duration)
+          'duration_score': 10 ** (1 - (abs(track_duration - (track.duration * 1000)) / track_duration))  # score the found track length based on its proximity to original track length
         })
 
   if len(selected_tracks) == 0:
@@ -100,11 +100,11 @@ def compare_tracks(tracks: List[tidalapi.Track], track_name: str, artists: List[
   # Further filtering
   for key in ['common_names', 'common_artists', 'common_album']:
     selected_tracks.sort(key=lambda x: len(x[key]), reverse=True)
-    selected_tracks = list(filter(lambda x: len(x[key]) == len(selected_tracks[0][key]), selected_tracks))
+    selected_tracks: List[tidalapi.Track] = list(filter(lambda x: len(x[key]) == len(selected_tracks[0][key]), selected_tracks))
   selected_tracks.sort(key=lambda x: x['duration_score'], reverse=True)
 
   # Prefer master quality tracks
-  master_tracks = list(filter(lambda x: x['track'].audio_quality == tidalapi.Quality.master, selected_tracks))
+  master_tracks: List[tidalapi.Track] = list(filter(lambda x: x['track'].audio_quality == tidalapi.Quality.master, selected_tracks))
 
   return master_tracks[0]['track'] if master_tracks else selected_tracks[0]['track']
 
@@ -120,22 +120,22 @@ def filter_track_data(tracks: List[spotify.Track]) -> List[Dict[str, Any]]:
 
 
 def tidal_crosscheck(tracks: List[Dict[str, Any]], playlist: spotify.Playlist) -> None:
-  session = tidalapi.Session()
+  session: tidalapi.Session = tidalapi.Session()
 
   handle_tidal_token(session)
 
-  user = session.user
-  playlists = user.playlists()
+  user: tidalapi.User = session.user
+  playlists: tidalapi.Playlist = user.playlists()
 
-  found_playlist = tuple(filter(lambda pl: pl.name == playlist.name, playlists))
+  found_playlist: List[tidalapi.Playlist] = list(filter(lambda pl: pl.name == playlist.name, playlists))
 
   if found_playlist:
-    overwrite_playlist = input(f' -> Playlist "{playlist.name}" already exists! Do you want to overwrite it? (Y/N): ').lower()
+    overwrite_playlist: str = input(f' -> Playlist "{playlist.name}" already exists! Do you want to overwrite it? (Y/N): ').lower()
     if overwrite_playlist in ('y','yes'):
       found_playlist[0].delete()
       tidal_crosscheck(tracks, playlist)
     elif overwrite_playlist in ('n','no'):
-      choose_another_playlist = input('\nDo you want to choose another playlist? (Y/N): ').lower()
+      choose_another_playlist: str = input('\nDo you want to choose another playlist? (Y/N): ').lower()
       if choose_another_playlist in ('y', 'yes'):
         loop = asyncio.get_event_loop()
         loop.run_until_complete(main())
@@ -148,49 +148,71 @@ def tidal_crosscheck(tracks: List[Dict[str, Any]], playlist: spotify.Playlist) -
   else:
     print(f'\nPorting playlist "{playlist.name}"...')
 
-    new_playlist = user.create_playlist(playlist.name, playlist.description)
-    tracks_not_found = []
+    new_playlist: tidalapi.UserPlaylist = user.create_playlist(playlist.name, playlist.description)
+    tracks_not_found: List[tidalapi.Track] = []
 
     for i, track in enumerate(tracks):
-      track_name = track['name']
-      artists = [str(artist) for artist in track["artists"]]
-      album = track['album']
-      track_duration = track["length"]
-      length = f'{int((track_duration/1000)/60)}:{str(int((track_duration/1000)%60)).zfill(2)}'
+      track_name: str = track['name']
+      artists: List[str] = [str(artist) for artist in track["artists"]]
+      album: str = track['album']
+      track_duration: int = track["length"]
+      length: str = f'{int((track_duration/1000)/60)}:{str(int((track_duration/1000)%60)).zfill(2)}'
 
       print(f' [{i + 1}/{len(tracks)}]: "{track_name}" by {", ".join(artists)} ({length}) ', end='')
 
-      tracks_found = []
-      artist_list = list(chain.from_iterable(filter_name(artist) for artist in artists))
-      whole_phrase = filter_name(track_name) + artist_list
+      tracks_found: tidalapi.Track = []
+      artist_words: List[str] = list(chain.from_iterable(filter_name(artist) for artist in artists))
+      track_words = list(filter(lambda x: (x not in ('feat.', 'ft.')) and (x not in artist_words), filter_name(track_name)))
+      whole_phrase: List[str] = track_words + artist_words
 
       # Use words in track's and artists' names to search
-      for i, word in enumerate(whole_phrase):
-        if i == 0: continue   # skip using just one word (too vague)
+      for j, word in enumerate(whole_phrase):
+        if j == 0: continue   # skip using just one word (too vague)
 
-        search_result = session.search(" ".join(whole_phrase[:i+1]), models=[tidalapi.media.Track], limit=4 + len(whole_phrase) - i)
-        isrc_found = tuple(filter(lambda tr: tr.isrc == track['isrc'], search_result['tracks']))
+        limit: int = 5 + len(whole_phrase) - j
+        search_result: Dict[str, Any] = session.search(" ".join(whole_phrase[:j+1]), models=[tidalapi.media.Track], limit=limit)
+        isrc_found: List[tidalapi.Track] = list(filter(lambda tr: tr.isrc == track['isrc'], search_result['tracks']))
 
         # Check for exact match
         if isrc_found:
           # Prefer master quality tracks
-          master_tracks = list(filter(lambda x: x.audio_quality == tidalapi.Quality.master, isrc_found))
+          master_tracks: List[tidalapi.Track] = list(filter(lambda x: x.audio_quality == tidalapi.Quality.master, isrc_found))
           new_playlist.add([master_tracks[0].id if master_tracks else isrc_found[0].id])            # found by isrc => 1:1 match
           print('•')
           break
         else:
-          # Fill list with all search results
+          # If the search results generate fewer entries than we asked for, there is no need to continue adding words to the search query, it will only generate fewer results...
+          if len(search_result['tracks']) < limit:
+            if len(search_result['tracks']) == 0 and j == 1:
+              tracks_not_found.append(track)                  # found nothing (extremely rare)
+              print('×')
+              break
+            else:
+              # ...fill list with all search results and break out of the loop to search for another track
+              tracks_found.extend(search_result['tracks'])
+              found_track: tidalapi.Track | None = compare_tracks(tracks_found, track_name, artists, album, track_duration)
+
+              if found_track:
+                new_playlist.add([found_track.id])            # found by similar name, artists, album
+                print('•')
+                break
+              else:
+                tracks_not_found.append([track, i])           # found nothing (extremely rare)
+                print('×')
+                break
+
+          # Fill list with tracks found until we go through the whole phrase of name and artists
           tracks_found.extend(search_result['tracks'])
 
           # When we're on the last word and no exact match was found, use the comparison algorithm
-          if len(whole_phrase) - 1 == i:
-            found_track = compare_tracks(tracks_found, track_name, artists, album, track_duration)
+          if len(whole_phrase) - 1 == j:
+            found_track: tidalapi.Track | None = compare_tracks(tracks_found, track_name, artists, album, track_duration)
 
             if found_track:
-              new_playlist.add([found_track.id])          # found by similar name and artists
+              new_playlist.add([found_track.id])              # found by similar name and artists
               print('•')
             else:
-              tracks_not_found.append(track)              # found nothing (extremely rare)
+              tracks_not_found.append([track, i])             # found nothing (extremely rare)
               print('×')
 
 
@@ -198,7 +220,7 @@ def tidal_crosscheck(tracks: List[Dict[str, Any]], playlist: spotify.Playlist) -
     if tracks_not_found:
       print(f'\nCould not find following tracks on TIDAL:')
       for track in tracks_not_found:
-        print(f' -> "{track["name"]}" by {", ".join([str(art) for art in track["artists"]])}')
+        print(f' -> [{track[1] + 1}/{len(tracks)}]: "{track[0]["name"]}" by {", ".join([str(art) for art in track[0]["artists"]])}')
 
     print(f'\nSuccessfully ported {len(tracks) - len(tracks_not_found)} out of {len(tracks)} tracks in the "{playlist.name}" playlist!')
 
@@ -209,15 +231,15 @@ async def select_playlist(client: spotify.Client, playlists: List[spotify.Playli
     print(f' {i + 1}: {playlist.name}')
 
   # Let user choose a playlist to port
-  playlist_number = get_playlist_number(len(playlists))
-  selected_playlist = playlists[playlist_number]
+  playlist_number: int = get_playlist_number(len(playlists))
+  selected_playlist: spotify.Playlist = playlists[playlist_number]
 
   # Get and filter playlist tracks data
   playlist_tracks = await client.http.get_playlist_tracks(selected_playlist.id, limit=100)
-  tracks = playlist_tracks['items']
+  tracks: List = playlist_tracks['items']
 
-  if len(tracks) == 0:
-    another_playlist = input(f' -> Playlist "{selected_playlist.name}" is empty! Choose another playlist? (Y/N): ').lower()
+  if not tracks:
+    another_playlist: str = input(f' -> Playlist "{selected_playlist.name}" is empty! Choose another playlist? (Y/N): ').lower()
     if another_playlist in ('y','yes'):
       print()
       await select_playlist(client, playlists)
@@ -226,7 +248,7 @@ async def select_playlist(client: spotify.Client, playlists: List[spotify.Playli
     else:
       print('-> No valid answer provided, quitting...')
   elif len(tracks) == 100:
-    offset_accum = len(tracks)
+    offset_accum: int = len(tracks)
     while offset_accum == len(tracks):
       more_playlist_tracks = await client.http.get_playlist_tracks(selected_playlist.id, offset=offset_accum, limit=100)
       tracks.extend(more_playlist_tracks['items'])
@@ -241,14 +263,14 @@ async def select_playlist(client: spotify.Client, playlists: List[spotify.Playli
 async def main():
   async with spotify.Client(client_id, client_secret) as client:
     global user_id
-    user = await client.get_user(user_id)
-    playlists = await user.get_all_playlists()
+    user: spotify.User = await client.get_user(user_id)
+    playlists: List[spotify.Playlist] = await user.get_all_playlists()
 
     # Filter playlists based on owner
-    playlists = list(filter(lambda x: x.owner == user, playlists))
+    playlists: List[spotify.Playlist] = list(filter(lambda x: x.owner == user, playlists))
 
-    if len(playlists) == 0:
-      another_id = input(f' -> There are no public playlists by user {user.display_name} ({user_id}). Choose another user ID? (Y/N): ').lower()
+    if not playlists:
+      another_id: str = input(f' -> There are no public playlists by user {user.display_name} ({user_id}). Choose another user ID? (Y/N): ').lower()
       if another_id in ('y','yes'):
         set_user_id()
         loop = asyncio.get_event_loop()
