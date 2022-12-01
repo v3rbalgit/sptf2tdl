@@ -123,6 +123,11 @@ def tidal_crosscheck(tracks: List[Dict[str, Any]], playlist: spotify.Playlist) -
   session: tidalapi.Session = tidalapi.Session()
 
   handle_tidal_token(session)
+  # try:
+  #   login, future = session.login_oauth()
+  #   future.result()
+  # except TimeoutError:
+  #   print(f' -> Request has timed out from link: {login.verification_uri_complete}')
 
   user: tidalapi.User = session.user
   playlists: tidalapi.Playlist = user.playlists()
@@ -162,7 +167,7 @@ def tidal_crosscheck(tracks: List[Dict[str, Any]], playlist: spotify.Playlist) -
 
       tracks_found: tidalapi.Track = []
       artist_words: List[str] = list(chain.from_iterable(filter_name(artist) for artist in artists))
-      track_words = list(filter(lambda x: (x not in ('feat.', 'ft.')) and (x not in artist_words), filter_name(track_name)))
+      track_words: List[str] = list(filter(lambda x: (x not in ('feat.', 'ft.')) and (x not in artist_words), filter_name(track_name)))
       whole_phrase: List[str] = track_words + artist_words
 
       # Use words in track's and artists' names to search
