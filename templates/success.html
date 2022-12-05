@@ -10,12 +10,10 @@
    </h2>
    {% if not_found %}
    <hr>
-   <h3 id="not_found" class="mb-3">
-    Following tracks were not found on TIDAL:
+   <h4 id="not_found" class="mb-3">Following tracks were not found on TIDAL:</h4>
     {% for track in not_found %}
-      <p>"{{ track.name }}" by {{ track.artists|join(', ') }}</p>
+      <p class="mb-1">"{{ track.name }}" by {{ track.artists|join(', ') }}</p>
     {% endfor %}
-   </h3>
    {% endif %}
   </div>
 {% endblock %}
