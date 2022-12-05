@@ -1,7 +1,7 @@
 from __future__ import annotations
 from dataclasses import dataclass
-import tidalapi, pprint
-from typing import Optional, List, Dict, Any
+import tidalapi
+from typing import Optional, List, Dict, Any, Callable
 from datetime import datetime
 from itertools import chain
 
@@ -11,10 +11,10 @@ from tools import filter_name
 
 @dataclass
 class TidalCredentials:
-  token_type: str
-  access_token: str
-  refresh_token: str = None
-  expiry_time: datetime = None
+  token_type: Optional[str]
+  access_token: Optional[str]
+  refresh_token: Optional[str]
+  expiry_time: Optional[datetime]
 
 
 class LoginError(ValueError):
@@ -27,11 +27,11 @@ class PlaylistError(ValueError):
 
 
 class TidalUser:
-  def __init__(self, /, credentials: Optional[TidalCredentials] = None) -> None:
-    self._credentials: TidalCredentials = credentials
+  def __init__(self, /, credentials: Optional[TidalCredentials]) -> None:
+    self._credentials: Optional[TidalCredentials] = credentials
     self._session: tidalapi.Session = tidalapi.Session()
-    self._login: tidalapi.session.LinkLogin = None
-    self._login_uri: str = None
+    self._login: tidalapi.session.LinkLogin | None = None
+    self._login_uri: Any | None = None
     self._login_future = None
 
     if not self._credentials:
@@ -50,13 +50,17 @@ class TidalUser:
   def session(self):
     return self._session
 
+  @property
+  def credentials(self):
+    return self._credentials
+
   def check_login(self) -> bool:
     if self._session.check_login() == True:
       return True
     else:
       raise LoginError('User not logged in')
 
-  def login(self, callback: function = None) -> bool:
+  def login(self, /, callback: Optional[Callable] = None) -> bool:
     if not self._credentials:
       try:
         self._login_future.result()
@@ -80,18 +84,22 @@ class TidalUser:
 
 class TidalTransfer:
   def __init__(self, /, user: TidalUser, playlist: SpotifyPlaylist) -> None:
-    self._user: tidalapi.User = user.user
+    self._user: Optional[tidalapi.User] = user.user
     self._session: tidalapi.Session = user.session
     self._playlist_to_transfer: SpotifyPlaylist = playlist
-    self._new_playlist: tidalapi.UserPlaylist = None
+    self._new_playlist: tidalapi.UserPlaylist
     self._tracks_not_found: List[SpotifyTrack] = []
 
   @property
   def tracks_not_found(self):
     return self._tracks_not_found
 
+  @property
+  def new_playlist(self):
+    return self._new_playlist
+
   def _compare_tracks(self, /, tracks: List[tidalapi.media.Track], track_name: str, artists: List[str], album_name: str, track_duration: int) -> tidalapi.Track | None:
-    selected_tracks: List[tidalapi.Track] = []
+    selected_tracks: List[Dict[str, tidalapi.media.Track | List[str]] | float] = []
 
     # Filter every track in search results by common track name words and artist name words
     for track in tracks:
@@ -123,7 +131,7 @@ class TidalTransfer:
 
 
   def create_playlist(self, overwrite: bool = False) -> None:
-    existing_playlist: List[tidalapi.UserPlaylist] = list(filter(lambda pl: pl.name == self._playlist_to_transfer.name, self._user.playlists()))
+    existing_playlist: List[tidalapi.UserPlaylist] = list(filter(lambda pl: pl.name == self._playlist_to_transfer.name, self._user.playlists()))  # type: ignore
 
     if existing_playlist:
       if overwrite:
@@ -131,10 +139,10 @@ class TidalTransfer:
         self.create_playlist(overwrite)
       raise PlaylistError(f'Playlist with name {self._playlist_to_transfer.name} already exists', self._playlist_to_transfer.name)
 
-    self._new_playlist: tidalapi.UserPlaylist = self._user.create_playlist(self._playlist_to_transfer.name, self._playlist_to_transfer.description)
+    self._new_playlist: tidalapi.UserPlaylist = self._user.create_playlist(self._playlist_to_transfer.name, self._playlist_to_transfer.description)  # type: ignore
 
 
-  def transfer_playlist(self, callback: function = None) -> None:
+  def transfer_playlist(self, callback: Optional[Callable] = None) -> None:
     if not self._new_playlist:
       raise PlaylistError(f'Playlist with name {self._playlist_to_transfer.name} does not exist on user "{self._user.id}"', self._playlist_to_transfer.name, self._user.id)
 
@@ -146,7 +154,7 @@ class TidalTransfer:
 
       if callback: callback(i, track)
 
-      tracks_found: tidalapi.media.Track = []
+      tracks_found: List[tidalapi.media.Track] = []
       artist_words: List[str] = list(chain.from_iterable(filter_name(artist) for artist in artists))
       track_words: List[str] = list(filter(lambda x: (x not in ('feat.', 'ft.')) and (x not in artist_words), filter_name(track_name)))
       whole_phrase: List[str] = track_words + artist_words
@@ -157,7 +165,7 @@ class TidalTransfer:
 
         limit: int = 5 + len(whole_phrase) - j
         search_result: Dict[str, Any] = self._session.search(" ".join(whole_phrase[:j+1]), models=[tidalapi.media.Track], limit=limit)
-        isrc_found: List[tidalapi.Track] = list(filter(lambda tr: tr.isrc == track['isrc'], search_result['tracks']))
+        isrc_found: List[tidalapi.Track] = list(filter(lambda tr: tr.isrc == track.isrc, search_result['tracks']))
 
         # Check for exact match
         if isrc_found:
@@ -180,7 +188,7 @@ class TidalTransfer:
                 self._new_playlist.add([found_track.id])            # found by similar name, artists, album
                 break
               else:
-                self._tracks_not_found.append([track, i])           # found nothing (extremely rare)
+                self._tracks_not_found.append(track)           # found nothing (extremely rare)
                 break
 
           # Fill list with tracks found until we go through the whole phrase of name and artists
@@ -193,5 +201,5 @@ class TidalTransfer:
             if found_track:
               self._new_playlist.add([found_track.id])              # found by similar name and artists
             else:
-              self._tracks_not_found.append([track, i])             # found nothing (extremely rare)
+              self._tracks_not_found.append(track)                  # found nothing (extremely rare)
 
