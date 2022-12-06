@@ -2,13 +2,13 @@
 {% block title %}Spotify -> Tidal Playlist Transfer{% endblock %}
 {% block content %}
   <div class="container">
-    <div class="page-header mt-3">
+    <div class="page-header mt-5">
       <h1 class="display-3">Port your favourite Spotify playlists to TIDAL!</h1>
     </div>
     <form action="/" method="post">
       {{ form.hidden_tag() }}
       <div class="mb-3">
-        <label for="playlistLink" class="form-label">Playlist Link/ID</label>
+        <label for="playlistLink" class="form-label"></label>
         {{ form.link(class_='form-control', id="playlistLink", aria_describedby="playlistHelp") }}
         <div id="playlistHelp" class="form-text">Provide a playlist link (or ID) to transfer to TIDAL</div>
       </div>
@@ -19,8 +19,16 @@
     {% endfor %} -->
     {% if link %}
     <div class="mb-3">
-      <p class="bg-danger rounded" style="padding: 10px;">Please use this link to log in to TIDAL: <a href="{{ link }}" target="_blank" onclick='location.assign(`${location.href}transfer`);'>{{ link }}</a></p>
+      <p class="bg-danger rounded" style="padding: 10px;">Please use this link to log in to TIDAL: <a href="{{ link }}" target="_blank" id="tidal-link">{{ link }}</a></p>
     </div>
     {% endif %}
   </div>
+{% endblock %}
+{% block scripts %}
+{{ super() }}
+<script type="text/javascript">
+  $('#tidal-link').click(() => {
+    location.href = `${location.href}transfer`
+  })
+</script>
 {% endblock %}
