@@ -7,7 +7,7 @@ from wtforms.validators import DataRequired
 from datetime import datetime
 
 from sptf_classes import SpotifyPlaylist
-from tidal_classes import TidalUser, TidalCredentials, TidalTransfer
+from tidal_classes import TidalUser, TidalCredentials, TidalTransfer, PlaylistError
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'hard to guess string'
@@ -63,22 +63,34 @@ def transfer():
 
 @app.route("/success")
 def success():
-  global transfer
+  global handler
   playlist = SpotifyPlaylist.from_id(session.get('id'))
 
   return render_template('success.html', not_found=handler.tracks_not_found, playlist=playlist)
+
+@app.route("/error")
+def error():
+  global handler
+  playlist = SpotifyPlaylist.from_id(session.get('id'))
+  error = request.args.get('error')
+
+  return render_template('error.html', error=error, playlist=playlist)
+
 
 @socketio.on('track', namespace='/transfer')
 def get_playlist():
   global user
   global handler
+  try:
 
-  playlist = SpotifyPlaylist.from_id(session.get('id'))
-  handler = TidalTransfer(user, playlist)
-  handler.create_playlist()
-  handler.transfer_playlist(lambda i, track: emit('track', {'data': {'index': i+1, 'name': track.name, 'artists': ", ".join([artist for artist in track.artists])}, 'total': len(playlist.tracks)}))
+    playlist = SpotifyPlaylist.from_id(session.get('id'))
+    handler = TidalTransfer(user, playlist)
+    handler.create_playlist()
+    handler.transfer_playlist(lambda i, track: emit('track', {'data': {'index': i+1, 'name': track.name, 'artists': ", ".join([artist for artist in track.artists])}, 'total': len(playlist.tracks)}))
 
-  emit('success', { 'url': url_for('success')})
+    emit('success', { 'url': url_for('success') })
+  except PlaylistError as err:
+    emit('error', { 'url': url_for('error', error=err.args[0])})
 
 if __name__ == "__main__":
   socketio.run(app, debug=True)

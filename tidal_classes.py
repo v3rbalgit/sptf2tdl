@@ -137,7 +137,7 @@ class TidalTransfer:
       if overwrite:
         existing_playlist[0].delete()
         self.create_playlist(overwrite)
-      raise PlaylistError(f'Playlist with name {self._playlist_to_transfer.name} already exists', self._playlist_to_transfer.name)
+      raise PlaylistError(f'Playlist with name "{self._playlist_to_transfer.name}" already exists', self._playlist_to_transfer.name)
 
     self._new_playlist: tidalapi.UserPlaylist = self._user.create_playlist(self._playlist_to_transfer.name, self._playlist_to_transfer.description)  # type: ignore
 
