@@ -28,9 +28,9 @@ $(document).ready(function () {
       });
       $('#results').html(not_found_html);
     } else {
-      socket.emit('track');
+      socket.emit('track', { index: msg.data.index + 1 });
     }
   });
 
-  socket.emit('track');
+  socket.emit('track', { index: 0 });
 });
