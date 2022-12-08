@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import List, Optional
 from datetime import datetime
-from utils import filter_name
+from app.utils import filter_name
 from itertools import chain
 
 import spotify, tidalapi, asyncio
@@ -91,11 +91,12 @@ class TidalCredentials:
 
 # Login to TIDAL
 class TidalLogin:
-  credentials: TidalCredentials
+  credentials: Optional[TidalCredentials]
   session: tidalapi.Session
 
   def __init__(self) -> None:
     self.session = tidalapi.Session()
+    self.credentials = None
     self._login, self._login_future = self.session.login_oauth()
     self._login_uri = self._login.verification_uri_complete
 
@@ -144,6 +145,14 @@ class TidalTransfer:
 
     return self.session.user.create_playlist(playlist.name, playlist.description)  # type: ignore
 
+  def find_playlist(self, playlist_id: int) -> UserPlaylist:
+    playlists = self.session.user.playlists()   #type: ignore
+    if not playlists:
+      raise PlaylistError(f'Playlist with ID {playlist_id} does not exist on user account', playlist_id)
+
+    return list(filter(lambda x: x.id == playlist_id, playlists))[0]  # type: ignore
+
+
   def find_track(self, track: SpotifyTrack) -> Optional[Track]:
     tracks_found: List[Track] = []
 
@@ -169,7 +178,7 @@ class TidalTransfer:
       if isrc_found:
         # Prefer master quality tracks
         master_tracks: List[Track] = list(filter(lambda x: x.audio_quality == Quality.master, isrc_found))
-        return master_tracks[0].id if master_tracks else isrc_found[0].id            # found by isrc => 1:1 match
+        return master_tracks[0] if master_tracks else isrc_found[0]            # found by isrc => 1:1 match
       else:
         if len(search_result['tracks']) < limit:
           if len(search_result['tracks']) == 0 and j == 1:

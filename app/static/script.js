@@ -5,9 +5,8 @@ $(document).ready(function () {
   let total = 0;
   let playlist = '';
 
-  socket.emit('track');
   socket.on('track', function (msg) {
-    if (!msg.data.found) {
+    if (msg.data.found == false) {
       not_found.push({
         index: msg.data.index,
         name: msg.data.name,
@@ -22,8 +21,8 @@ $(document).ready(function () {
     if (msg.data.index + 1 == msg.data.total) {
       document.title = `Playlist "${playlist}" Successfully Transferred!`;
       $('.page-header h1').text(`Successfully transfered ${playlist} to TIDAL!`);
-      $('.hidden').removeClass('hidden');
-      $('#track_info').parent().addClass('hidden');
+      $('.d-none').removeClass('d-none');
+      $('#track_info').parent().addClass('d-none');
       not_found_html = not_found.map((track) => {
         return `<p class="m-1">${track.index + 1}/${total} "${track.name}" by ${track.artists}</p>`;
       });
@@ -32,4 +31,6 @@ $(document).ready(function () {
       socket.emit('track');
     }
   });
+
+  socket.emit('track');
 });

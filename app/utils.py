@@ -21,7 +21,7 @@ def filter_name(string: str) -> List[str]:
   return re.sub(r'[\:|\;|\,|\"|\&|\(|\)|\\]',' ', replace_letters(string)).replace(" - ", " ").split()
 
 # Check if a link is a valid Spotify URL
-def check_url(url: str) -> Tuple[str, str]:
+def check_url(url: str) -> str:
   spotify_base = 'open.spotify.com'
   url_components = urlsplit(url)
 
@@ -33,7 +33,7 @@ def check_url(url: str) -> Tuple[str, str]:
 
   resource, resource_id = url_components.path.split('/')[1:3]           # first element is an empty string
 
-  if not resource in ('playlist', 'user', 'track', 'album'):                # can be extended to other resources if needed
+  if not resource in ('playlist'):                # can be extended to other resources if needed
     raise TypeError(f'Not a valid Spotify URL: "{url_components.path!r}"', url)
 
-  return (resource, resource_id)
+  return resource_id

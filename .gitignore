@@ -166,4 +166,7 @@ _main_orig.py
 tidal_login.bak
 tidal_login.dat
 tidal_login.dir
+tidal.bak
+tidal.dat
+tidal.dir
 .vscode/
