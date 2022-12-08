@@ -17,9 +17,8 @@ from ..models import User
 client = SpotifyClient(getenv('client_id', ''), getenv('client_secret', ''))
 
 @socketio.on('track', namespace='/transfer')
-def get_playlist():
-  if not session.get('cur'):
-    session['cur'] = 0
+def get_playlist(message):
+  session['cur'] = message['index']
 
   id = session.get('id')
   user: List[User] = db.session.execute(db.select(User).filter_by(id=id)).first()
@@ -43,8 +42,6 @@ def get_playlist():
 
   if tidal_track:
     tidal_playlist.add([tidal_track.id])
-
-  session['cur'] += 1
 
   emit('track', {
     'data': {
