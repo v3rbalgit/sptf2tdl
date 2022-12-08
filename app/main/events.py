@@ -18,20 +18,28 @@ client = SpotifyClient(getenv('client_id', ''), getenv('client_secret', ''))
 
 @socketio.on('track', namespace='/transfer')
 def get_playlist():
+  if not session.get('cur'):
+    session['cur'] = 0
+
   id = session.get('id')
-  user: List[User] = db.session.execute(db.select(User).filter_by(id=id)).one()
+  user: List[User] = db.session.execute(db.select(User).filter_by(id=id)).first()
 
   login = TidalLogin()
   login.credentials = TidalCredentials(user[0].token_type, user[0].access_token, user[0].refresh_token, user[0].expiry_time)
   login.login()
 
-  spotify_playlist: SpotifyPlaylist = client.get_playlist(session['plid'])
+  spotify_playlist: SpotifyPlaylist = client.get_playlist(session['splid'])
   tracks: List[SpotifyTrack] = spotify_playlist.tracks
-  track_index: int = session['cur'] if session.get('cur') else 0
 
   transfer = TidalTransfer(login)
-  tidal_playlist: UserPlaylist = transfer.create_playlist(spotify_playlist)
-  tidal_track: Optional[Track] = transfer.find_track(tracks[track_index])
+
+  if session['cur'] == 0:
+    tidal_playlist: UserPlaylist = transfer.create_playlist(spotify_playlist)
+    session['tlid'] = tidal_playlist.id
+  else:
+    tidal_playlist: UserPlaylist = transfer.find_playlist(session['tlid'])
+
+  tidal_track: Optional[Track] = transfer.find_track(tracks[session['cur']])
 
   if tidal_track:
     tidal_playlist.add([tidal_track.id])
@@ -40,10 +48,10 @@ def get_playlist():
 
   emit('track', {
     'data': {
-      'index': track_index,
+      'index': session['cur'],
       'found': True if tidal_track else False,
-      'name': tracks[track_index].name,
-      'artists': ", ".join([artist for artist in tracks[track_index].artists]),
+      'name': tracks[session['cur']].name,
+      'artists': ", ".join([artist for artist in tracks[session['cur']].artists]),
       'playlist': spotify_playlist.name,
       'total': len(tracks)
       }
