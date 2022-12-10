@@ -7,7 +7,7 @@ from itertools import chain
 import spotify, tidalapi, asyncio
 from tidalapi import Track, UserPlaylist, Quality
 
-# Exception classes
+# Error classes
 class LoginError(ValueError):
   '''Error indicating a login has failed'''
   pass
@@ -24,6 +24,7 @@ class SpotifyTrack:
   album: str
   length: int
   isrc: str
+  image: str
 
   def __str__(self) -> str:
     return f'"{self.name}" by {", ".join(self.artists)} from "{self.album}" ({int((self.length/1000)/60)}:{str(int((self.length/1000)%60)).zfill(2)})'
@@ -48,6 +49,7 @@ class SpotifyClient:
     self._client_id = client_id
     self._client_secret = client_secret
 
+  # Find a Spotify playlist by ID
   def get_playlist(self, id: str) -> SpotifyPlaylist:
     return self.loop.run_until_complete(self._get_playlist(id))
 
@@ -74,7 +76,8 @@ class SpotifyClient:
             [artist['name'] for artist in track['track']['artists']],
             track['track']['album']['name'],
             track['track']['duration_ms'],
-            track['track']['external_ids']['isrc']) for track in tracks),
+            track['track']['external_ids']['isrc'],
+            track['track']['album']['images'][0]['url']) for track in tracks),      # index 0 for big image, 1 smaller, 2 smallest
         playlist['name'],
         playlist['description'],
         playlist['owner']['display_name'] if playlist['owner']['display_name'] else playlist['owner']['id']
@@ -104,12 +107,14 @@ class TidalLogin:
   def login_uri(self):
     return self._login_uri
 
+  # Helper function to check login status
   def check_login(self) -> bool:
     if self.session.check_login() == True:
       return True
     else:
       raise LoginError('User not logged into TIDAL')
 
+  # Initiate login
   def login(self) -> None:
     if not self.credentials:
       try:
@@ -137,6 +142,7 @@ class TidalTransfer:
     tidal_login.check_login()
     self.session = tidal_login.session
 
+  # Create new playlist from Spotify playlist
   def create_playlist(self, playlist: SpotifyPlaylist) -> UserPlaylist:
     existing_playlist = list(filter(lambda pl: pl.name == playlist.name, self.session.user.playlists()))  # type: ignore
 
@@ -145,14 +151,13 @@ class TidalTransfer:
 
     return self.session.user.create_playlist(playlist.name, playlist.description)  # type: ignore
 
-  def find_playlist(self, playlist_id: int) -> UserPlaylist:
+  # Find 1st playlist on user account matching by name
+  def find_playlist(self, playlist_name: str) -> Optional[UserPlaylist]:
     playlists = self.session.user.playlists()   #type: ignore
-    if not playlists:
-      raise PlaylistError(f'Playlist with ID {playlist_id} does not exist on user account', playlist_id)
 
-    return list(filter(lambda x: x.id == playlist_id, playlists))[0]  # type: ignore
+    return list(filter(lambda pl: pl.name == playlist_name, playlists))[0] if playlists else None
 
-
+  # Find a track from Spotify playlist on TIDAL
   def find_track(self, track: SpotifyTrack) -> Optional[Track]:
     tracks_found: List[Track] = []
 
@@ -192,7 +197,7 @@ class TidalTransfer:
         if len(whole_phrase) - 1 == j:
           return self._filter_tracks(tracks_found, track_name, artists, album, track_duration)
 
-  # Method for selecting the closest match to the original track
+  # Select closest match to the original track, preferring master quality
   def _filter_tracks(self, /, tracks: List[Track], track_name: str, artists: List[str], album_name: str, track_duration: int) -> Optional[Track]:
     selected_tracks = []
 
