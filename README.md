@@ -1,6 +1,6 @@
 # sptf2tdl
 A simple Python web appplication for porting Spotify playlists to TIDAL. 
-It uses Flask, SQLAlchemy and Socket-IO for the backend and simple HTML, Bootstrap theme and jQuery for the frontend. The matching algorithm will primarily pick master quality track versions where found.
+It uses Flask, SQLAlchemy and Socket-IO for the backend and simple HTML, Bootstrap theme and jQuery for the frontend. The matching algorithm will pick master quality track versions where found.
 
 ### Usage:
 0. Create `.env` file in root directory with `client_id="???"` and `client_secret="???"` values obtained via [Spotify developer portal](https://developer.spotify.com/dashboard/applications)
