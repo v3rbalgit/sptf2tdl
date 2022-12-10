@@ -38,6 +38,7 @@ $(document).ready(function () {
     $('#track_info ~ a').removeClass('d-none');
     $('#overwrite').click(function () {
       document.title = `Transferring Spotify Playlist "${msg}"`;
+      $('.page-header h1').text(`Transferring playlist "${msg}" to TIDAL...`);
       $('#info').addClass('d-none');
       $('#track_info').text('Loading...');
       $('#track_info ~ a').addClass('d-none');
