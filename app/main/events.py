@@ -39,7 +39,7 @@ def get_playlist(overwrite: bool):
     tidal_playlist: Optional[UserPlaylist] = transfer.find_playlist(spotify_playlist)
 
     if tidal_playlist and not overwrite:
-      emit('playlist_exists', spotify_playlist.name)
+      emit('playlist_exists', tidal_playlist.name)
       return None
     elif tidal_playlist and overwrite:
       tidal_playlist.delete()
