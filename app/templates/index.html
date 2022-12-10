@@ -2,7 +2,7 @@
 {% block title %}Spotify -> Tidal Playlist Transfer{% endblock %}
 {% block content %}
   <div class="container">
-    <div class="page-header mt-5">
+    <div class="page-header m-5">
       <h1 class="display-3">Port your favourite Spotify playlists to TIDAL!</h1>
     </div>
     <form action="/" method="POST">
@@ -15,7 +15,7 @@
       {{ form.submit(class_='btn btn-primary') }}
     </form>
     {% if link %}
-    <div class="mt-5">
+    <div class="m-5">
       <p class="bg-danger rounded" style="padding: 10px;"><a href="{{ link }}" target="_blank" id="tidal-link">Click here</a> to login to TIDAL</p>
     </div>
     {% endif %}

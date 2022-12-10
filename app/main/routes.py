@@ -18,9 +18,6 @@ tidal_users = {}
 
 @main.route("/", methods=['GET', 'POST'])
 def index():
-  if session.get('cur'):
-    del session['cur']
-
   form = PlaylistForm()
 
   if form.validate_on_submit():
@@ -53,9 +50,12 @@ def transfer():
       refresh_token=login.credentials.refresh_token,#type: ignore
       expiry_time=login.credentials.expiry_time     #type: ignore
       )
+
     db.session.add(user)
     db.session.commit()
+
     del tidal_users[id]
+
     return redirect(url_for('main.transfer'))
 
   playlist = client.get_playlist(session['splid'])

@@ -16,10 +16,8 @@ from ..models import User
 
 client = SpotifyClient(getenv('client_id', ''), getenv('client_secret', ''))
 
-@socketio.on('track', namespace='/transfer')
-def get_playlist(message):
-  session['cur'] = message['index']
-
+@socketio.on('start_transfer', namespace='/transfer')
+def get_playlist(overwrite):
   id = session.get('id')
   user: List[User] = db.session.execute(db.select(User).filter_by(id=id)).first()
 
@@ -32,24 +30,33 @@ def get_playlist(message):
 
   transfer = TidalTransfer(login)
 
-  if session['cur'] == 0:
-    tidal_playlist: UserPlaylist = transfer.create_playlist(spotify_playlist)
-    session['tlid'] = tidal_playlist.id
-  else:
-    tidal_playlist: UserPlaylist = transfer.find_playlist(session['tlid'])
+  tidal_playlist: Optional[UserPlaylist] = transfer.find_playlist(spotify_playlist.name)
 
-  tidal_track: Optional[Track] = transfer.find_track(tracks[session['cur']])
+  if tidal_playlist and not overwrite:
+    emit('overwrite_playlist', spotify_playlist.name)
+    return None
+  elif tidal_playlist and overwrite:
+    tidal_playlist.delete()
 
-  if tidal_track:
-    tidal_playlist.add([tidal_track.id])
+  tidal_playlist: Optional[UserPlaylist] = transfer.create_playlist(spotify_playlist)
 
-  emit('track', {
-    'data': {
-      'index': session['cur'],
-      'found': True if tidal_track else False,
-      'name': tracks[session['cur']].name,
-      'artists': ", ".join([artist for artist in tracks[session['cur']].artists]),
-      'playlist': spotify_playlist.name,
-      'total': len(tracks)
-      }
-    })
+  for i, track in enumerate(tracks):
+    data = {
+      'data': {
+        'index': i,
+        'name': track.name,
+        'artists': ", ".join([artist for artist in track.artists]),
+        'playlist': spotify_playlist.name,
+        'total': len(tracks)
+        }
+    }
+    emit('next_track', data)
+
+    tidal_track: Optional[Track] = transfer.find_track(track)
+
+    if tidal_track:
+      tidal_playlist.add([tidal_track.id])
+    else:
+      emit('not_found', data)
+
+  emit('finished')
