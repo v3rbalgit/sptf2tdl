@@ -60,4 +60,4 @@ def transfer():
 
   playlist = client.get_playlist(session['splid'])
 
-  return render_template('transfer.html', playlist_name=playlist.name)
+  return render_template('transfer.html', playlist_name=playlist.name) if playlist else render_template('error.html', id=session['splid'])

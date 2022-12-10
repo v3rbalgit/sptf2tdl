@@ -17,46 +17,52 @@ from ..models import User
 client = SpotifyClient(getenv('client_id', ''), getenv('client_secret', ''))
 
 @socketio.on('start_transfer', namespace='/transfer')
-def get_playlist(overwrite):
+def get_playlist(overwrite: bool):
   id = session.get('id')
   user: List[User] = db.session.execute(db.select(User).filter_by(id=id)).first()
 
-  login = TidalLogin()
-  login.credentials = TidalCredentials(user[0].token_type, user[0].access_token, user[0].refresh_token, user[0].expiry_time)
-  login.login()
+  spotify_playlist: Optional[SpotifyPlaylist] = client.get_playlist(session['splid'])
 
-  spotify_playlist: SpotifyPlaylist = client.get_playlist(session['splid'])
-  tracks: List[SpotifyTrack] = spotify_playlist.tracks
+  if spotify_playlist:
+    tracks: List[SpotifyTrack] = spotify_playlist.tracks
 
-  transfer = TidalTransfer(login)
+    if not tracks:
+      emit('playlist_empty', spotify_playlist.name)
+      return None
 
-  tidal_playlist: Optional[UserPlaylist] = transfer.find_playlist(spotify_playlist.name)
+    login = TidalLogin()
+    login.credentials = TidalCredentials(user[0].token_type, user[0].access_token, user[0].refresh_token, user[0].expiry_time)
+    login.login()
 
-  if tidal_playlist and not overwrite:
-    emit('overwrite_playlist', spotify_playlist.name)
-    return None
-  elif tidal_playlist and overwrite:
-    tidal_playlist.delete()
+    transfer = TidalTransfer(login)
 
-  tidal_playlist: Optional[UserPlaylist] = transfer.create_playlist(spotify_playlist)
+    tidal_playlist: Optional[UserPlaylist] = transfer.find_playlist(spotify_playlist)
 
-  for i, track in enumerate(tracks):
-    data = {
-      'data': {
-        'index': i,
-        'name': track.name,
-        'artists': ", ".join([artist for artist in track.artists]),
-        'playlist': spotify_playlist.name,
-        'total': len(tracks)
-        }
-    }
-    emit('next_track', data)
+    if tidal_playlist and not overwrite:
+      emit('playlist_exists', spotify_playlist.name)
+      return None
+    elif tidal_playlist and overwrite:
+      tidal_playlist.delete()
 
-    tidal_track: Optional[Track] = transfer.find_track(track)
+    tidal_playlist: Optional[UserPlaylist] = transfer.create_playlist(spotify_playlist)
 
-    if tidal_track:
-      tidal_playlist.add([tidal_track.id])
-    else:
-      emit('not_found', data)
+    for i, track in enumerate(tracks):
+      data = {
+        'data': {
+          'index': i,
+          'name': track.name,
+          'artists': ", ".join([artist for artist in track.artists]),
+          'playlist': spotify_playlist.name,
+          'total': len(tracks)
+          }
+      }
+      emit('next_track', data)
 
-  emit('finished')
+      tidal_track: Optional[Track] = transfer.find_track(track)
+
+      if tidal_track and tidal_playlist:
+        tidal_playlist.add([tidal_track.id])
+      else:
+        emit('no_match', data)
+
+    emit('finished')

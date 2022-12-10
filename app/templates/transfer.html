@@ -2,13 +2,13 @@
 {% block title %}Transferring Spotify Playlist "{{ playlist_name }}"{% endblock %}
 {% block content %}
   <div class="container">
-    <div class="page-header m-5">
+    <div class="page-header mt-5">
       <h1 class="display-3">Transferring playlist "{{ playlist_name }}" to TIDAL...</h1>
     </div>
-    <div class="m-5">
+    <div class="mt-5">
       <h4 id="track_info">Loading...</h4>
-      <a class="btn btn-primary d-none mr-5 mt-5" href="#" role="button" id="overwrite">Overwrite</a>
-      <a class="btn btn-primary d-none mr-5 mt-5" href="/" role="button">Transfer Another</a>
+      <a class="btn btn-primary d-none ml-5 mt-5" href="#" role="button" id="overwrite">Overwrite</a>
+      <a class="btn btn-primary d-none ml-5 mt-5" href="/" role="button">Transfer Another</a>
     </div>
     <div class="mt-5 d-none" id="info">
       <h4 class="mb-3">Following tracks were not found on TIDAL:</h4>
