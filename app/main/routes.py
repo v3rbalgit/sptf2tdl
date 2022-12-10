@@ -24,12 +24,11 @@ def index():
     session['splid'] = check_url(form.link.data)
 
     if not session.get('id'):
-      login = TidalLogin()
       id = uuid4().hex
       session['id'] = id
-      tidal_users[id] = login
+      tidal_users[id] = TidalLogin()
 
-      return render_template('index.html', form=form, link=f'https://{login.login_uri}')
+      return render_template('index.html', form=form, link=f'https://{tidal_users[id].login_uri}')
 
     return redirect(url_for('main.transfer'))
 
