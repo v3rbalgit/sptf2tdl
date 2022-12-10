@@ -45,10 +45,10 @@ def transfer():
     login.login()
     user = User(
       id=session['id'],
-      token_type=login.credentials.token_type,      #type: ignore
-      access_token=login.credentials.access_token,  #type: ignore
-      refresh_token=login.credentials.refresh_token,#type: ignore
-      expiry_time=login.credentials.expiry_time     #type: ignore
+      token_type=login.credentials.token_type,        #type: ignore
+      access_token=login.credentials.access_token,    #type: ignore
+      refresh_token=login.credentials.refresh_token,  #type: ignore
+      expiry_time=login.credentials.expiry_time       #type: ignore
       )
 
     db.session.add(user)
