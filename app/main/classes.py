@@ -2,7 +2,6 @@ from dataclasses import dataclass
 from typing import List, Optional
 from datetime import datetime
 from app.utils import filter_name
-from itertools import chain
 
 import spotify, tidalapi, asyncio
 from tidalapi import Track, UserPlaylist, Quality
@@ -10,10 +9,6 @@ from tidalapi import Track, UserPlaylist, Quality
 # Error classes
 class LoginError(ValueError):
   '''Error indicating a login has failed'''
-  pass
-
-class PlaylistError(ValueError):
-  '''Error indicating an error with the playlist'''
   pass
 
 # Spotify track dataclass
@@ -50,38 +45,40 @@ class SpotifyClient:
     self._client_secret = client_secret
 
   # Find a Spotify playlist by ID
-  def get_playlist(self, id: str) -> SpotifyPlaylist:
+  def get_playlist(self, id: str) -> Optional[SpotifyPlaylist]:
     return self.loop.run_until_complete(self._get_playlist(id))
 
-  async def _get_playlist(self, id: str) -> SpotifyPlaylist:
+  async def _get_playlist(self, id: str) -> Optional[SpotifyPlaylist]:
     async with spotify.Client(self._client_id, self._client_secret) as client:
-      playlist = await client.http.get_playlist(id)
-      tracks = await client.http.get_playlist_tracks(id)
-      tracks = tracks['items']
+      try:
+        playlist = await client.http.get_playlist(id)
 
-      if not tracks:
-        raise PlaylistError(f'Playlist {id} is empty.')
-      elif len(tracks) == 100:
-        offset: int = len(tracks)
+        tracks = await client.http.get_playlist_tracks(id)
+        tracks = tracks['items']
 
-        while offset == len(tracks):
-          more_tracks = await client.http.get_playlist_tracks(id, offset=offset, limit=100)
-          tracks.extend(more_tracks['items'])
-          offset += 100
+        if len(tracks) == 100:
+          offset: int = len(tracks)
 
-      return SpotifyPlaylist(
-        id,
-        list(SpotifyTrack(
-            track['track']['name'],
-            [artist['name'] for artist in track['track']['artists']],
-            track['track']['album']['name'],
-            track['track']['duration_ms'],
-            track['track']['external_ids']['isrc'],
-            track['track']['album']['images'][0]['url']) for track in tracks),      # index 0 for big image, 1 smaller, 2 smallest
-        playlist['name'],
-        playlist['description'],
-        playlist['owner']['display_name'] if playlist['owner']['display_name'] else playlist['owner']['id']
-      )
+          while offset == len(tracks):
+            more_tracks = await client.http.get_playlist_tracks(id, offset=offset, limit=100)
+            tracks.extend(more_tracks['items'])
+            offset += 100
+
+        return SpotifyPlaylist(
+          id,
+          [SpotifyTrack(
+              track['track']['name'],
+              [artist['name'] for artist in track['track']['artists']],
+              track['track']['album']['name'],
+              track['track']['duration_ms'],
+              track['track']['external_ids']['isrc'],
+              track['track']['album']['images'][0]['url']) for track in tracks] if tracks else [],      # index 0 for big image, 1 smaller, 2 smallest
+          playlist['name'],
+          playlist['description'],
+          playlist['owner']['display_name'] if playlist['owner']['display_name'] else playlist['owner']['id']
+        )
+      except BaseException:
+        return None
 
 # Dataclass for holding TIDAL user's login credentials
 @dataclass
@@ -143,40 +140,32 @@ class TidalTransfer:
     self.session = tidal_login.session
 
   # Create new playlist from Spotify playlist
-  def create_playlist(self, playlist: SpotifyPlaylist) -> UserPlaylist:
+  def create_playlist(self, playlist: SpotifyPlaylist) -> Optional[UserPlaylist]:
     existing_playlist = list(filter(lambda pl: pl.name == playlist.name, self.session.user.playlists()))  # type: ignore
 
-    if existing_playlist:
-      raise PlaylistError(f'Playlist with name "{playlist.name}" already exists', playlist.name)
-
-    return self.session.user.create_playlist(playlist.name, playlist.description)  # type: ignore
+    return self.session.user.create_playlist(playlist.name, playlist.description) if not existing_playlist else None  # type: ignore
 
   # Find 1st playlist on user account matching by name
-  def find_playlist(self, playlist_name: str) -> Optional[UserPlaylist]:
+  def find_playlist(self, playlist: SpotifyPlaylist) -> Optional[UserPlaylist]:
     playlists = self.session.user.playlists()   #type: ignore
 
-    return list(filter(lambda pl: pl.name == playlist_name, playlists))[0] if playlists else None
+    return list(filter(lambda pl: pl.name == playlist.name, playlists))[0] if playlists else None
 
   # Find a track from Spotify playlist on TIDAL
   def find_track(self, track: SpotifyTrack) -> Optional[Track]:
     tracks_found: List[Track] = []
 
-    track_name: str = track.name
-    artists: List[str] = [str(artist) for artist in track.artists]
-    album: str = track.album
-    track_duration: int = track.length
-
     # Prepare search words
-    artist_words: List[str] = list(chain.from_iterable(filter_name(artist) for artist in artists))
-    track_words: List[str] = list(filter(lambda x: (x not in ('feat.', 'ft.')) and (x not in artist_words), filter_name(track_name)))
+    artist_words: List[str] = [word for artist in track.artists for word in filter_name(artist)]
+    track_words: List[str] = list(filter(lambda x: (x not in ('feat.', 'ft.')) and (x not in artist_words), filter_name(track.name)))
     whole_phrase: List[str] = track_words + artist_words
 
     # Try adding search words to query until match is found
-    for j, word in enumerate(whole_phrase):
-      if j == 0: continue   # skip using just one word (too vague)
+    for i, word in enumerate(whole_phrase):
+      if i == 0: continue   # skip using just one word (too vague)
 
-      limit: int = 5 + len(whole_phrase) - j    # search limit inversely proportional to number of search words
-      search_result = self.session.search(" ".join(whole_phrase[:j+1]), models=[tidalapi.media.Track], limit=limit)
+      limit: int = 5 + len(whole_phrase) - i    # search limit inversely proportional to number of search words
+      search_result = self.session.search(" ".join(whole_phrase[:i+1]), models=[tidalapi.media.Track], limit=limit)
       isrc_found: List[Track] = list(filter(lambda tr: tr.isrc == track.isrc, search_result['tracks']))
 
       # Check for exact match
@@ -186,33 +175,32 @@ class TidalTransfer:
         return master_tracks[0] if master_tracks else isrc_found[0]            # found by isrc => 1:1 match
       else:
         if len(search_result['tracks']) < limit:
-          if len(search_result['tracks']) == 0 and j == 1:
+          if not search_result['tracks'] and i == 1:
             return None
-          else:
-            tracks_found.extend(search_result['tracks'])
-            return self._filter_tracks(tracks_found, track_name, artists, album, track_duration)
+          tracks_found.extend(search_result['tracks'])
+          return self._filter_tracks(tracks_found, track)
 
         tracks_found.extend(search_result['tracks'])
 
-        if len(whole_phrase) - 1 == j:
-          return self._filter_tracks(tracks_found, track_name, artists, album, track_duration)
+        if len(whole_phrase) - 1 == i:
+          return self._filter_tracks(tracks_found, track)
 
-  # Select closest match to the original track, preferring master quality
-  def _filter_tracks(self, /, tracks: List[Track], track_name: str, artists: List[str], album_name: str, track_duration: int) -> Optional[Track]:
+  # Select closest match to the original track
+  def _filter_tracks(self, /, tidal_tracks: List[Track], spotify_track: SpotifyTrack) -> Optional[Track]:
     selected_tracks = []
 
     # Filter every track in search results by common track name words and artist name words
-    for track in tracks:
-      common_names: List[str] = list(set(filter_name(track.name)) & set(filter_name(track_name)))   # type: ignore
+    for tidal_track in tidal_tracks:
+      common_names: List[str] = list(set(filter_name(tidal_track.name)) & set(filter_name(spotify_track.name)))   # type: ignore
       if common_names:
-        common_artists: List[str] = list(set(chain.from_iterable(filter_name(artist.name) for artist in track.artists)) & set(chain.from_iterable(filter_name(a) for a in artists)))   # type: ignore
+        common_artists: List[str] = list(set([word for artist in tidal_track.artists for word in filter_name(artist.name)]) & set([word for artist in spotify_track.artists for word in filter_name(artist)]))   # type: ignore
         if common_artists:
           selected_tracks.append({
-            'track': track,
+            'track': tidal_track,
             'common_names': common_names,
             'common_artists': common_artists,
-            'common_album': list(set(filter_name(track.album.name)) & set(filter_name(album_name))),  # type: ignore
-            'duration_score': 10 ** (1 - (abs(track_duration - (track.duration * 1000)) / track_duration))  # score the found track length based on its proximity to original track length
+            'common_album': list(set(filter_name(tidal_track.album.name)) & set(filter_name(spotify_track.album))),  # type: ignore
+            'duration_score': 10 ** (1 - (abs(spotify_track.length - (tidal_track.duration * 1000)) / spotify_track.length))  # score the found track length based on its proximity to original track length
           })
 
     if not selected_tracks:

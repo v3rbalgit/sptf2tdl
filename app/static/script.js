@@ -9,10 +9,10 @@ $(document).ready(function () {
     total = msg.data.total;
     playlist = msg.data.playlist;
 
-    $('#track_info').text(`${msg.data.index + 1}/${msg.data.total} "${msg.data.name}" by ${msg.data.artists}`);
+    $('#track_info').text(`${msg.data.index + 1}/${total} "${msg.data.name}" by ${msg.data.artists}`);
   });
 
-  socket.on('not_found', function (msg) {
+  socket.on('no_match', function (msg) {
     not_found.push({
       index: msg.data.index,
       name: msg.data.name,
@@ -31,7 +31,7 @@ $(document).ready(function () {
     $('#results').html(not_found_html);
   });
 
-  socket.on('overwrite_playlist', function (msg) {
+  socket.on('playlist_exists', function (msg) {
     document.title = `Playlist "${msg}" already exists!`;
     $('.page-header h1').text(`Playlist "${msg}" already exists.`);
     $('#track_info').text(`Would you like to overwrite existing playlist or transfer another one?`);
@@ -40,10 +40,17 @@ $(document).ready(function () {
       document.title = `Transferring Spotify Playlist "${msg}"`;
       $('.page-header h1').text(`Transferring playlist "${msg}" to TIDAL...`);
       $('#info').addClass('d-none');
-      $('#track_info').text('Loading...');
       $('#track_info ~ a').addClass('d-none');
+      $('#track_info').text('Loading...');
       socket.emit('start_transfer', true);
     });
+  });
+
+  socket.on('playlist_empty', function (msg) {
+    document.title = `Playlist "${msg}" is empty.`;
+    $('.page-header h1').text(`Playlist "${msg}" doesn't contain any tracks.`);
+    $('#track_info').text(`Would you like to transfer another playlist?`);
+    $('#track_info ~ a:last-child').removeClass('d-none');
   });
 
   socket.emit('start_transfer', false);
