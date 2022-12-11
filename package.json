@@ -1,7 +1,7 @@
 {
   "name": "sptf2tdl",
   "version": "1.0.0",
-  "description": "A simple Python web appplication for porting Spotify playlists to TIDAL. \r It uses Flask, SQLAlchemy and Socket-IO for the backend and simple HTML, Bootstrap theme and jQuery for the frontend. The matching algorithm will pick master quality track versions where found.",
+  "description": "A simple Python web appplication for porting Spotify playlists to TIDAL. \r It uses Flask, SQLAlchemy and Socket-IO for the backend and simple HTML, Bootstrap theme and React for the frontend. The matching algorithm will pick master quality track versions where found.",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"

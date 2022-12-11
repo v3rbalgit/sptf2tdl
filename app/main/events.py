@@ -51,12 +51,10 @@ def get_playlist(overwrite: bool):
 
     for i, track in enumerate(tracks):
       data = {
-        'data': {
-          'index': i,
-          'name': track.name,
-          'artists': ", ".join([artist for artist in track.artists]),
-          'image': track.image
-          }
+        'index': i,
+        'name': track.name,
+        'artists': ", ".join([artist for artist in track.artists]),
+        'image': track.image
       }
       emit('next_track', data)
 

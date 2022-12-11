@@ -29,11 +29,11 @@ def check_url(url: str) -> str:
     raise TypeError('Link URL must be of type "string"')
 
   if url_components.netloc != spotify_base:
-    raise TypeError(f'Not a valid Spotify URL: "{url_components.netloc!r}"', url)
+    raise TypeError(f'Invalid Spotify URL', f'{url_components.netloc!r}')
 
   resource, resource_id = url_components.path.split('/')[1:3]           # first element is an empty string
 
   if not resource in ('playlist'):                # can be extended to other resources if needed
-    raise TypeError(f'Not a valid Spotify URL: "{url_components.path!r}"', url)
+    raise TypeError(f'Invalid Spotify URL', f'{url_components.path!r}')
 
   return resource_id

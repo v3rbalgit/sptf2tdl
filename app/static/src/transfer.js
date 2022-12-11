@@ -196,10 +196,10 @@ function Content() {
 
     socket.on('next_track', (msg) => {
       updateNextTrack({
-        index: msg.data.index + 1,
-        name: msg.data.name,
-        artists: msg.data.artists,
-        image: msg.data.image,
+        index: msg.index + 1,
+        name: msg.name,
+        artists: msg.artists,
+        image: msg.image,
       });
     });
 
@@ -207,9 +207,9 @@ function Content() {
       updateNotFound([
         ...notFound,
         {
-          index: msg.data.index + 1,
-          name: msg.data.name,
-          artists: msg.data.artists,
+          index: msg.index + 1,
+          name: msg.name,
+          artists: msg.artists,
         },
       ]);
     });

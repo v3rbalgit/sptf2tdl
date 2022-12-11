@@ -274,18 +274,18 @@ function Content() {
 
     socket.on('next_track', function (msg) {
       updateNextTrack({
-        index: msg.data.index + 1,
-        name: msg.data.name,
-        artists: msg.data.artists,
-        image: msg.data.image
+        index: msg.index + 1,
+        name: msg.name,
+        artists: msg.artists,
+        image: msg.image
       });
     });
 
     socket.on('no_match', function (msg) {
       updateNotFound([].concat(_toConsumableArray(notFound), [{
-        index: msg.data.index + 1,
-        name: msg.data.name,
-        artists: msg.data.artists
+        index: msg.index + 1,
+        name: msg.name,
+        artists: msg.artists
       }]));
     });
 
