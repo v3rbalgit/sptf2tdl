@@ -17,19 +17,22 @@ tidal_users = {}
 
 @main.route("/", methods=['GET', 'POST'])
 def index():
-  if request.form.get('link'):
-    session['splid'] = check_url(request.form['link'])
+  try:
+    if request.form.get('link'):
+      session['splid'] = check_url(request.form['link'])
 
-    if not session.get('id'):
-      id = uuid4().hex
-      session['id'] = id
-      tidal_users[id] = TidalLogin()
+      if not session.get('id'):
+        id = uuid4().hex
+        session['id'] = id
+        tidal_users[id] = TidalLogin()
 
-      return render_template('index.html', link=f'https://{tidal_users[id].login_uri}')
+        return render_template('index.html', link=f'https://{tidal_users[id].login_uri}')
 
-    return redirect(url_for('main.transfer'))
+      return redirect(url_for('main.transfer'))
 
-  return render_template('index.html')
+    return render_template('index.html')
+  except TypeError as e:
+    return render_template('error.html', msg=e.args[0])
 
 @main.route("/transfer")
 def transfer():
@@ -56,4 +59,4 @@ def transfer():
 
   playlist = client.get_playlist(session['splid'])
 
-  return render_template('transfer.html', playlist_name=playlist.name) if playlist else render_template('error.html', id=session['splid'])
+  return render_template('transfer.html', playlist_name=playlist.name) if playlist else render_template('error.html', msg='Invalid Spotify URL')
