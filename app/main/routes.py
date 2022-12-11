@@ -1,7 +1,6 @@
-from flask import session, redirect, url_for, render_template
+from flask import session, redirect, url_for, render_template, request
 
 from . import main
-from .forms import PlaylistForm
 from app import db
 from ..models import User
 from ..utils import check_url
@@ -18,21 +17,19 @@ tidal_users = {}
 
 @main.route("/", methods=['GET', 'POST'])
 def index():
-  form = PlaylistForm()
-
-  if form.validate_on_submit():
-    session['splid'] = check_url(form.link.data)
+  if request.form.get('link'):
+    session['splid'] = check_url(request.form['link'])
 
     if not session.get('id'):
       id = uuid4().hex
       session['id'] = id
       tidal_users[id] = TidalLogin()
 
-      return render_template('index.html', form=form, link=f'https://{tidal_users[id].login_uri}')
+      return render_template('index.html', link=f'https://{tidal_users[id].login_uri}')
 
     return redirect(url_for('main.transfer'))
 
-  return render_template('index.html', form=form)
+  return render_template('index.html')
 
 @main.route("/transfer")
 def transfer():
