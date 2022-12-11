@@ -11,6 +11,7 @@ It uses Flask, SQLAlchemy and Socket-IO for the backend and simple HTML, Bootstr
 
 ### Known issues
 - does not catch errors with TIDAL login
+- Spotify playlists must be **public** in order to transfer them
 - the matching algorithm can sometimes mismatch tracks, specifically some classical tracks which have complicated names
 - will not add songs to playlist that are restricted in your market (country)
 - *(NOTE)* node.js is used only for Babel conversion of React JSX in the static/src directory
