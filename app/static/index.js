@@ -108,7 +108,7 @@ var Content = function (_React$Component3) {
         { className: "row justify-content-center mt-5" },
         React.createElement(
           "div",
-          { className: "col-8 mt-5" },
+          { className: "col-8" },
           React.createElement(
             "h3",
             { className: "display-4 text-center" },
@@ -120,7 +120,7 @@ var Content = function (_React$Component3) {
           { className: "col-9 mt-5" },
           React.createElement(
             "p",
-            { className: "lead text-center" },
+            { className: "text-center" },
             "Enter link to your desired Spotify playlist, press Transfer, login to your TIDAL account ",
             React.createElement("br", null),
             " and watch the magic happen"

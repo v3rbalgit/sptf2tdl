@@ -25,10 +25,13 @@ def get_playlist(overwrite: bool):
 
   if spotify_playlist:
     tracks: List[SpotifyTrack] = spotify_playlist.tracks
+    name: str = spotify_playlist.name
 
     if not tracks:
       emit('playlist_empty')
       return None
+
+    emit('playlist_info', { 'name': name, 'total': len(tracks)})
 
     login = TidalLogin()
     login.credentials = TidalCredentials(user[0].token_type, user[0].access_token, user[0].refresh_token, user[0].expiry_time)
@@ -52,9 +55,7 @@ def get_playlist(overwrite: bool):
           'index': i,
           'name': track.name,
           'artists': ", ".join([artist for artist in track.artists]),
-          'image': track.image,
-          'playlist': spotify_playlist.name,
-          'total': len(tracks)
+          'image': track.image
           }
       }
       emit('next_track', data)
