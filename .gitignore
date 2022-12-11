@@ -167,3 +167,6 @@ tidal_login.bak
 tidal_login.dat
 tidal_login.dir
 .vscode/
+
+package-lock.json
+node_modules/

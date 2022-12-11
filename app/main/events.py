@@ -27,7 +27,7 @@ def get_playlist(overwrite: bool):
     tracks: List[SpotifyTrack] = spotify_playlist.tracks
 
     if not tracks:
-      emit('playlist_empty', spotify_playlist.name)
+      emit('playlist_empty')
       return None
 
     login = TidalLogin()
@@ -39,7 +39,7 @@ def get_playlist(overwrite: bool):
     tidal_playlist: Optional[UserPlaylist] = transfer.find_playlist(spotify_playlist)
 
     if tidal_playlist and not overwrite:
-      emit('playlist_exists', tidal_playlist.name)
+      emit('playlist_exists')
       return None
     elif tidal_playlist and overwrite:
       tidal_playlist.delete()
@@ -52,6 +52,7 @@ def get_playlist(overwrite: bool):
           'index': i,
           'name': track.name,
           'artists': ", ".join([artist for artist in track.artists]),
+          'image': track.image,
           'playlist': spotify_playlist.name,
           'total': len(tracks)
           }

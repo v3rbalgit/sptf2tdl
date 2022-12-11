@@ -148,8 +148,9 @@ class TidalTransfer:
   # Find 1st playlist on user account matching by name
   def find_playlist(self, playlist: SpotifyPlaylist) -> Optional[UserPlaylist]:
     playlists = self.session.user.playlists()   #type: ignore
+    found_playlist = list(filter(lambda pl: pl.name == playlist.name, playlists))
 
-    return list(filter(lambda pl: pl.name == playlist.name, playlists))[0] if playlists else None
+    return found_playlist[0] if found_playlist else None
 
   # Find a track from Spotify playlist on TIDAL
   def find_track(self, track: SpotifyTrack) -> Optional[Track]:

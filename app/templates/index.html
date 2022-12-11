@@ -1,31 +1,12 @@
 {% extends "base.html" %}
-{% block title %}Spotify -> Tidal Playlist Transfer{% endblock %}
+{% block title %}Transfer any Spotify playlist to your TIDAL account{% endblock %}
 {% block content %}
-  <div class="container">
-    <div class="page-header mt-5">
-      <h1 class="display-3">Port your favourite Spotify playlists to TIDAL!</h1>
-    </div>
-    <form action="/" method="POST">
-      {{ form.hidden_tag() }}
-      <div class="mb-3">
-        <label for="playlistLink" class="form-label">Playlist URL:</label>
-        {{ form.link(class_='form-control', id="playlistLink", aria_describedby="playlistHelp") }}
-        <div id="playlistHelp" class="form-text">Provide a link to the Spotify playlist you want to transfer to your TIDAL account</div>
-      </div>
-      {{ form.submit(class_='btn btn-primary') }}
-    </form>
-    {% if link %}
-    <div class="m-5">
-      <p class="bg-danger rounded" style="padding: 10px;"><a href="{{ link }}" target="_blank" id="tidal-link">Click here</a> to login to TIDAL</p>
-    </div>
-    {% endif %}
-  </div>
+<div class="container" id="root"></div>
 {% endblock %}
 {% block scripts %}
 {{ super() }}
 <script type="text/javascript">
-  $('#tidal-link').click(() => {
-    location.href = `${location.href}transfer`
-  })
+const LOGIN_URI = "{{ link }}";
 </script>
+<script src="{{ url_for('static', filename='index.js') }}" type="text/javascript"></script>
 {% endblock %}
