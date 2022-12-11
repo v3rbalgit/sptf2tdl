@@ -1,19 +1,16 @@
+let socket = io('/transfer');
+
 // Button component
 function Button(props) {
   if (props.onClick) {
     return (
-      <a
-        className={'btn btn-primary ' + props.className}
-        href={props.href || '#'}
-        role="button"
-        onClick={props.onClick}
-      >
+      <a className="btn btn-primary" href={props.href || '#'} role="button" onClick={props.onClick}>
         {props.text}
       </a>
     );
   }
   return (
-    <a className={'btn btn-primary ' + props.className} href={props.href || '#'} role="button">
+    <a className="btn btn-primary" href={props.href || '#'} role="button">
       {props.text}
     </a>
   );
@@ -23,7 +20,7 @@ function Button(props) {
 function NotFoundInfo(props) {
   return (
     <div className="row mt-5">
-      <h3 className="mb-3">Following tracks were not found on TIDAL:</h3>
+      <h4 className="mb-3">Following tracks were not found on TIDAL:</h4>
       <div>
         {props.notFound.map((track, i) => {
           return (
@@ -40,7 +37,7 @@ function NotFoundInfo(props) {
 // TrackInfo component displays transfer progress
 function TrackInfo(props) {
   return (
-    <div className="row mt-5 h-75">
+    <div className="row">
       {props.nextTrack && (
         <div>
           <div className="progress">
@@ -48,22 +45,24 @@ function TrackInfo(props) {
               className="progress-bar"
               role="progressbar"
               aria-label="Transfer progress"
-              style={{ width: Math.round((props.nextTrack.index / props.total) * 100).toString() + '%' }}
+              style={{
+                width: Math.round((props.nextTrack.index / props.total) * 100).toString() + '%',
+              }}
               aria-valuenow={Math.round((props.nextTrack.index / props.total) * 100)}
               aria-valuemin="0"
               aria-valuemax="100"
             ></div>
           </div>
           <div className="justify-content-center">
-            <h3 className="display-6 d-block mb-5 mt-5">
+            <h3 className="d-block mb-5 mt-5">
               {props.nextTrack.index}/{props.total} "{props.nextTrack.name}" by {props.nextTrack.artists}
             </h3>
             <img
               src={props.nextTrack.image}
               className="rounded mx-auto d-block mt-3 mb-3"
               alt={props.nextTrack.name + ' by ' + props.nextTrack.artists}
-              width="500"
-              height="500"
+              width="480"
+              height="480"
             />
           </div>
         </div>
@@ -98,9 +97,9 @@ function SubHeader(props) {
   });
 
   return (
-    <div className="col-9 mt-5">
+    <div className="row justify-content-center mt-5">
       <p className="text-center">{text}</p>
-      <div className="d-grid gap-2 col-4 mx-auto mt-5">
+      <div className="d-flex w-50 justify-content-evenly mt-3">
         {props.exists && <Button text="Overwrite" onClick={props.overwriteEvent} />}
         {(props.exists || props.empty) && <Button text="Transfer Another" href="/" />}
       </div>
@@ -128,32 +127,41 @@ function Header(props) {
   });
 
   return (
-    <div className="col-8 mt-5">
+    <div className="row justify-content-center">
       <h3 className="display-4 text-center">{text}</h3>
+      {(props.exists || props.empty) && (
+        <div className="mt-5 mb-2 text-center display-1 text-danger">
+          <i className="fa-regular fa-circle-xmark"></i>
+        </div>
+      )}
     </div>
   );
 }
 
+// Displays transfer result after it has finished
 function TransferInfo(props) {
   React.useEffect(() => {
     document.title = `Playlist "${props.playlist}" successfully transferred!`;
   });
 
   return (
-    <div className="row justify-content-center mt-5">
-      <div className="col-8 mt-5">
+    <div>
+      <div className="row justify-content-center">
         <h3 className="display-4 text-center">Transfer complete</h3>
+        <div className="mt-4 mb-4 text-center display-1 text-success">
+          <i className="fa-solid fa-check"></i>
+        </div>
       </div>
-      <div className="col-9 mt-5">
+      <div className="row mt-3">
         <p className="text-center">
           {props.notFound
             ? props.total - props.notFound.length + ' out of ' + props.total + ' tracks in'
             : 'All tracks in'}{' '}
           playlist "{props.playlist}" have been successfully transferred to your TIDAL account.
         </p>
-        {props.notFound && <NotFoundInfo notFound={props.notFound} total={props.total} />}
+        {props.notFound.length != 0 && <NotFoundInfo notFound={props.notFound} total={props.total} />}
       </div>
-      <div className="d-grid gap-2 col-4 mx-auto mt-5">
+      <div className="d-flex justify-content-center mt-3">
         <Button text="Transfer Another" href="/" />
       </div>
     </div>
@@ -162,50 +170,41 @@ function TransferInfo(props) {
 
 // Main Component
 function Content() {
-  let socket = io('/transfer');
-
-  const [state, setState] = React.useState({
-    total: 0,
-    playlist: PLAYLIST_NAME,
-    nextTrack: null,
+  const [playlistState, updatePlaylistState] = React.useState({
     playlistExists: false,
     playlistEmpty: false,
   });
 
-  const [nextTrack, setNextTrack] = React.useState(null);
+  const [playlistInfo, updatePlaylistInfo] = React.useState({
+    name: PLAYLIST_NAME,
+    totalTracks: 0,
+  });
 
-  const [notFound, setNotFound] = React.useState([]);
+  const [nextTrack, updateNextTrack] = React.useState(null);
 
-  const [finished, setFinished] = React.useState(false);
+  const [notFound, updateNotFound] = React.useState([]);
 
-  overwrite = (event) => {
-    event.preventDefault();
-
-    setState(...state);
-
-    setNextTrack(null);
-
-    socket.emit('start_transfer', true);
-  };
+  const [finished, updateFinished] = React.useState(false);
 
   React.useEffect(() => {
+    socket.on('playlist_info', (msg) => {
+      updatePlaylistInfo({
+        name: msg.name,
+        totalTracks: msg.total,
+      });
+    });
+
     socket.on('next_track', (msg) => {
-      setNextTrack({
+      updateNextTrack({
         index: msg.data.index + 1,
         name: msg.data.name,
         artists: msg.data.artists,
         image: msg.data.image,
       });
-
-      setState({
-        ...state,
-        total: msg.data.total,
-        playlist: msg.data.playlist,
-      });
     });
 
     socket.on('no_match', (msg) => {
-      setNotFound([
+      updateNotFound([
         ...notFound,
         {
           index: msg.data.index + 1,
@@ -216,21 +215,21 @@ function Content() {
     });
 
     socket.on('playlist_exists', () => {
-      setState({
-        ...state,
+      updatePlaylistState({
+        ...playlistState,
         playlistExists: true,
       });
     });
 
     socket.on('playlist_empty', () => {
-      setState({
-        ...state,
+      updatePlaylistState({
+        ...playlistState,
         playlistEmpty: true,
       });
     });
 
     socket.on('finished', () => {
-      setFinished(true);
+      updateFinished(true);
     });
 
     socket.emit('start_transfer', false);
@@ -245,16 +244,47 @@ function Content() {
     };
   }, []);
 
+  overwrite = (event) => {
+    event.preventDefault();
+
+    updatePlaylistInfo({
+      totalTracks: 0,
+      name: PLAYLIST_NAME,
+    });
+    updatePlaylistState({
+      playlistExists: false,
+      playlistEmpty: false,
+    });
+    updateNotFound([]);
+    updateNextTrack(null);
+
+    socket.emit('start_transfer', true);
+  };
+
   if (!finished) {
     return (
-      <div className="row justify-content-center mt-5">
-        <Header playlist={state.playlist} exists={state.playlistExists} empty={state.playlistEmpty} />
-        <SubHeader exists={state.playlistExists} empty={state.playlistEmpty} overwriteEvent={overwrite} />
-        {!state.playlistExists && !state.playlistEmpty && <TrackInfo nextTrack={nextTrack} total={state.total} />}
+      <div className="mt-5">
+        <Header
+          playlist={playlistInfo.name}
+          exists={playlistState.playlistExists}
+          empty={playlistState.playlistEmpty}
+        />
+        <SubHeader
+          exists={playlistState.playlistExists}
+          empty={playlistState.playlistEmpty}
+          overwriteEvent={overwrite}
+        />
+        {!playlistState.playlistExists && !playlistState.playlistEmpty && (
+          <TrackInfo nextTrack={nextTrack} total={playlistInfo.totalTracks} />
+        )}
       </div>
     );
   } else {
-    return <TransferInfo playlist={state.playlist} notFound={notFound} total={state.total} />;
+    return (
+      <div className="mt-5">
+        <TransferInfo playlist={playlistInfo.name} notFound={notFound} total={playlistInfo.totalTracks} />
+      </div>
+    );
   }
 }
 

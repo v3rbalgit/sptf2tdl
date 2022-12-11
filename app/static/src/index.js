@@ -39,11 +39,11 @@ class Content extends React.Component {
   render() {
     return (
       <div className="row justify-content-center mt-5">
-        <div className="col-8 mt-5">
+        <div className="col-8">
           <h3 className="display-4 text-center">Transfer your favourite Spotify playlists to TIDAL</h3>
         </div>
         <div className="col-9 mt-5">
-          <p className="lead text-center">
+          <p className="text-center">
             Enter link to your desired Spotify playlist, press Transfer, login to your TIDAL account <br /> and watch
             the magic happen
           </p>

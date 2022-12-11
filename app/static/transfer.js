@@ -2,23 +2,20 @@ var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = [
 
 function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
 
+var socket = io('/transfer');
+
 // Button component
 function Button(props) {
   if (props.onClick) {
     return React.createElement(
       'a',
-      {
-        className: 'btn btn-primary ' + props.className,
-        href: props.href || '#',
-        role: 'button',
-        onClick: props.onClick
-      },
+      { className: 'btn btn-primary', href: props.href || '#', role: 'button', onClick: props.onClick },
       props.text
     );
   }
   return React.createElement(
     'a',
-    { className: 'btn btn-primary ' + props.className, href: props.href || '#', role: 'button' },
+    { className: 'btn btn-primary', href: props.href || '#', role: 'button' },
     props.text
   );
 }
@@ -29,7 +26,7 @@ function NotFoundInfo(props) {
     'div',
     { className: 'row mt-5' },
     React.createElement(
-      'h3',
+      'h4',
       { className: 'mb-3' },
       'Following tracks were not found on TIDAL:'
     ),
@@ -57,7 +54,7 @@ function NotFoundInfo(props) {
 function TrackInfo(props) {
   return React.createElement(
     'div',
-    { className: 'row mt-5 h-75' },
+    { className: 'row' },
     props.nextTrack && React.createElement(
       'div',
       null,
@@ -68,7 +65,9 @@ function TrackInfo(props) {
           className: 'progress-bar',
           role: 'progressbar',
           'aria-label': 'Transfer progress',
-          style: { width: Math.round(props.nextTrack.index / props.total * 100).toString() + '%' },
+          style: {
+            width: Math.round(props.nextTrack.index / props.total * 100).toString() + '%'
+          },
           'aria-valuenow': Math.round(props.nextTrack.index / props.total * 100),
           'aria-valuemin': '0',
           'aria-valuemax': '100'
@@ -79,7 +78,7 @@ function TrackInfo(props) {
         { className: 'justify-content-center' },
         React.createElement(
           'h3',
-          { className: 'display-6 d-block mb-5 mt-5' },
+          { className: 'd-block mb-5 mt-5' },
           props.nextTrack.index,
           '/',
           props.total,
@@ -92,8 +91,8 @@ function TrackInfo(props) {
           src: props.nextTrack.image,
           className: 'rounded mx-auto d-block mt-3 mb-3',
           alt: props.nextTrack.name + ' by ' + props.nextTrack.artists,
-          width: '500',
-          height: '500'
+          width: '480',
+          height: '480'
         })
       )
     ),
@@ -134,7 +133,7 @@ function SubHeader(props) {
 
   return React.createElement(
     'div',
-    { className: 'col-9 mt-5' },
+    { className: 'row justify-content-center mt-5' },
     React.createElement(
       'p',
       { className: 'text-center' },
@@ -142,7 +141,7 @@ function SubHeader(props) {
     ),
     React.createElement(
       'div',
-      { className: 'd-grid gap-2 col-4 mx-auto mt-5' },
+      { className: 'd-flex w-50 justify-content-evenly mt-3' },
       props.exists && React.createElement(Button, { text: 'Overwrite', onClick: props.overwriteEvent }),
       (props.exists || props.empty) && React.createElement(Button, { text: 'Transfer Another', href: '/' })
     )
@@ -173,15 +172,21 @@ function Header(props) {
 
   return React.createElement(
     'div',
-    { className: 'col-8 mt-5' },
+    { className: 'row justify-content-center' },
     React.createElement(
       'h3',
       { className: 'display-4 text-center' },
       text
+    ),
+    (props.exists || props.empty) && React.createElement(
+      'div',
+      { className: 'mt-5 mb-2 text-center display-1 text-danger' },
+      React.createElement('i', { className: 'fa-regular fa-circle-xmark' })
     )
   );
 }
 
+// Displays transfer result after it has finished
 function TransferInfo(props) {
   React.useEffect(function () {
     document.title = 'Playlist "' + props.playlist + '" successfully transferred!';
@@ -189,19 +194,24 @@ function TransferInfo(props) {
 
   return React.createElement(
     'div',
-    { className: 'row justify-content-center mt-5' },
+    null,
     React.createElement(
       'div',
-      { className: 'col-8 mt-5' },
+      { className: 'row justify-content-center' },
       React.createElement(
         'h3',
         { className: 'display-4 text-center' },
         'Transfer complete'
+      ),
+      React.createElement(
+        'div',
+        { className: 'mt-4 mb-4 text-center display-1 text-success' },
+        React.createElement('i', { className: 'fa-solid fa-check' })
       )
     ),
     React.createElement(
       'div',
-      { className: 'col-9 mt-5' },
+      { className: 'row mt-3' },
       React.createElement(
         'p',
         { className: 'text-center' },
@@ -211,11 +221,11 @@ function TransferInfo(props) {
         props.playlist,
         '" have been successfully transferred to your TIDAL account.'
       ),
-      props.notFound && React.createElement(NotFoundInfo, { notFound: props.notFound, total: props.total })
+      props.notFound.length != 0 && React.createElement(NotFoundInfo, { notFound: props.notFound, total: props.total })
     ),
     React.createElement(
       'div',
-      { className: 'd-grid gap-2 col-4 mx-auto mt-5' },
+      { className: 'd-flex justify-content-center mt-3' },
       React.createElement(Button, { text: 'Transfer Another', href: '/' })
     )
   );
@@ -223,61 +233,56 @@ function TransferInfo(props) {
 
 // Main Component
 function Content() {
-  var socket = io('/transfer');
-
   var _React$useState5 = React.useState({
-    total: 0,
-    playlist: PLAYLIST_NAME,
-    nextTrack: null,
     playlistExists: false,
     playlistEmpty: false
   }),
       _React$useState6 = _slicedToArray(_React$useState5, 2),
-      state = _React$useState6[0],
-      setState = _React$useState6[1];
+      playlistState = _React$useState6[0],
+      updatePlaylistState = _React$useState6[1];
 
-  var _React$useState7 = React.useState(null),
+  var _React$useState7 = React.useState({
+    name: PLAYLIST_NAME,
+    totalTracks: 0
+  }),
       _React$useState8 = _slicedToArray(_React$useState7, 2),
-      nextTrack = _React$useState8[0],
-      setNextTrack = _React$useState8[1];
+      playlistInfo = _React$useState8[0],
+      updatePlaylistInfo = _React$useState8[1];
 
-  var _React$useState9 = React.useState([]),
+  var _React$useState9 = React.useState(null),
       _React$useState10 = _slicedToArray(_React$useState9, 2),
-      notFound = _React$useState10[0],
-      setNotFound = _React$useState10[1];
+      nextTrack = _React$useState10[0],
+      updateNextTrack = _React$useState10[1];
 
-  var _React$useState11 = React.useState(false),
+  var _React$useState11 = React.useState([]),
       _React$useState12 = _slicedToArray(_React$useState11, 2),
-      finished = _React$useState12[0],
-      setFinished = _React$useState12[1];
+      notFound = _React$useState12[0],
+      updateNotFound = _React$useState12[1];
 
-  overwrite = function overwrite(event) {
-    event.preventDefault();
-
-    setState.apply(undefined, _toConsumableArray(state));
-
-    setNextTrack(null);
-
-    socket.emit('start_transfer', true);
-  };
+  var _React$useState13 = React.useState(false),
+      _React$useState14 = _slicedToArray(_React$useState13, 2),
+      finished = _React$useState14[0],
+      updateFinished = _React$useState14[1];
 
   React.useEffect(function () {
+    socket.on('playlist_info', function (msg) {
+      updatePlaylistInfo({
+        name: msg.name,
+        totalTracks: msg.total
+      });
+    });
+
     socket.on('next_track', function (msg) {
-      setNextTrack({
+      updateNextTrack({
         index: msg.data.index + 1,
         name: msg.data.name,
         artists: msg.data.artists,
         image: msg.data.image
       });
-
-      setState(Object.assign({}, state, {
-        total: msg.data.total,
-        playlist: msg.data.playlist
-      }));
     });
 
     socket.on('no_match', function (msg) {
-      setNotFound([].concat(_toConsumableArray(notFound), [{
+      updateNotFound([].concat(_toConsumableArray(notFound), [{
         index: msg.data.index + 1,
         name: msg.data.name,
         artists: msg.data.artists
@@ -285,19 +290,19 @@ function Content() {
     });
 
     socket.on('playlist_exists', function () {
-      setState(Object.assign({}, state, {
+      updatePlaylistState(Object.assign({}, playlistState, {
         playlistExists: true
       }));
     });
 
     socket.on('playlist_empty', function () {
-      setState(Object.assign({}, state, {
+      updatePlaylistState(Object.assign({}, playlistState, {
         playlistEmpty: true
       }));
     });
 
     socket.on('finished', function () {
-      setFinished(true);
+      updateFinished(true);
     });
 
     socket.emit('start_transfer', false);
@@ -312,16 +317,45 @@ function Content() {
     };
   }, []);
 
+  overwrite = function overwrite(event) {
+    event.preventDefault();
+
+    updatePlaylistInfo({
+      totalTracks: 0,
+      name: PLAYLIST_NAME
+    });
+    updatePlaylistState({
+      playlistExists: false,
+      playlistEmpty: false
+    });
+    updateNotFound([]);
+    updateNextTrack(null);
+
+    socket.emit('start_transfer', true);
+  };
+
   if (!finished) {
     return React.createElement(
       'div',
-      { className: 'row justify-content-center mt-5' },
-      React.createElement(Header, { playlist: state.playlist, exists: state.playlistExists, empty: state.playlistEmpty }),
-      React.createElement(SubHeader, { exists: state.playlistExists, empty: state.playlistEmpty, overwriteEvent: overwrite }),
-      !state.playlistExists && !state.playlistEmpty && React.createElement(TrackInfo, { nextTrack: nextTrack, total: state.total })
+      { className: 'mt-5' },
+      React.createElement(Header, {
+        playlist: playlistInfo.name,
+        exists: playlistState.playlistExists,
+        empty: playlistState.playlistEmpty
+      }),
+      React.createElement(SubHeader, {
+        exists: playlistState.playlistExists,
+        empty: playlistState.playlistEmpty,
+        overwriteEvent: overwrite
+      }),
+      !playlistState.playlistExists && !playlistState.playlistEmpty && React.createElement(TrackInfo, { nextTrack: nextTrack, total: playlistInfo.totalTracks })
     );
   } else {
-    return React.createElement(TransferInfo, { playlist: state.playlist, notFound: notFound, total: state.total });
+    return React.createElement(
+      'div',
+      { className: 'mt-5' },
+      React.createElement(TransferInfo, { playlist: playlistInfo.name, notFound: notFound, total: playlistInfo.totalTracks })
+    );
   }
 }
 

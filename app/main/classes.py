@@ -53,7 +53,7 @@ class SpotifyClient:
       try:
         playlist = await client.http.get_playlist(id)
 
-        tracks = await client.http.get_playlist_tracks(id)
+        tracks = await client.http.get_playlist_tracks(id, limit=100)
         tracks = tracks['items']
 
         if len(tracks) == 100:
