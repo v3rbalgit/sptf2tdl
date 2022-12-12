@@ -124,7 +124,7 @@ class TidalLogin:
   def login(self) -> None:
     if not self.credentials:
       try:
-        self._login_future.result()                   # type: ignore
+        self._login_future.result()
 
         self.credentials = TidalCredentials(
           self.session.token_type,
@@ -136,7 +136,7 @@ class TidalLogin:
         raise LoginError('Login time has expired', self.login_uri)
     else:
       try:
-        self._login_future = None
+        self._login_future.cancel()
         self.session.load_oauth_session(self.credentials.token_type, self.credentials.access_token, self.credentials.refresh_token, self.credentials.expiry_time)
       except BaseException as e:
         raise LoginError(e.args[0])
@@ -168,7 +168,7 @@ class TidalTransfer:
 
     # Prepare search words
     artist_words: List[str] = [word for artist in track.artists for word in filter_name(artist)]
-    track_words: List[str] = list(filter(lambda x: (x not in ('feat.', 'ft.')) and (x not in artist_words), filter_name(track.name)))
+    track_words: List[str] = list(filter(lambda x: (x not in ('feat.', 'ft.', 'with')) and (x not in artist_words), filter_name(track.name)))
     whole_phrase: List[str] = track_words + artist_words
 
     # Try adding search words to query until match is found

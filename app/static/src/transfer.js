@@ -25,7 +25,7 @@ function NotFoundInfo(props) {
         {props.notFound.map((track, i) => {
           return (
             <p key={i} className="text-muted">
-              {track.index}/{props.total} "{track.name}" by {track.artists}
+              "{track.name}" by {track.artists} ({track.index}/{props.total})
             </p>
           );
         })}
