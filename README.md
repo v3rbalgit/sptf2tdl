@@ -9,9 +9,8 @@ It uses Flask, SQLAlchemy and Socket-IO for the backend and simple HTML, Bootstr
 3. Go to `localhost:5000` or `127.0.0.1:5000` in your web browser to use the application
 4. *(First use)* After entering playlist link for the first time, you will be prompted to login to TIDAL. Please **CLICK** the link that you will be provided (don't right click and open it in a new tab) otherwise the application might not work properly
 
-### Known issues
-- does not catch errors with TIDAL login
+### Known issues/limitations
 - Spotify playlists must be **public** in order to transfer them
-- the matching algorithm can sometimes mismatch tracks, specifically some classical tracks which have complicated names
-- will not add songs to playlist that are restricted in your market (country)
+- the matching algorithm will sometimes mismatch tracks, specifically some classical tracks which have complicated names
+- tracks which are restricted in your market (country) will not be added to the TIDAL playlist
 - *(NOTE)* node.js is used only for Babel conversion of React JSX in the static/src directory

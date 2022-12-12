@@ -2,9 +2,16 @@ from dataclasses import dataclass
 from typing import List, Optional
 from datetime import datetime
 from app.utils import filter_name
+from enum import StrEnum
 
 import spotify, tidalapi, asyncio
 from tidalapi import Track, UserPlaylist, Quality
+
+# Error enum
+class Err(StrEnum):
+  INVALID_URL = "You entered an invalid Spotify link. Check the URL and try again."
+  LOGIN_ERR = "There was a problem with your TIDAL login. Please try logging in again."
+  UNKNOWN_ERR = "Unknown error has occured. Please try again later."
 
 # Error classes
 class LoginError(ValueError):
@@ -14,6 +21,7 @@ class LoginError(ValueError):
 # Spotify track dataclass
 @dataclass
 class SpotifyTrack:
+  '''Holds Spotify track information'''
   name: str
   artists: List[str]
   album: str
@@ -27,6 +35,7 @@ class SpotifyTrack:
 # Spotify playlist dataclass
 @dataclass
 class SpotifyPlaylist:
+  '''Holds Spotify playlist information'''
   id: str
   tracks: List[SpotifyTrack]
   name: str
@@ -115,7 +124,7 @@ class TidalLogin:
   def login(self) -> None:
     if not self.credentials:
       try:
-        self._login_future.result()
+        self._login_future.result()                   # type: ignore
 
         self.credentials = TidalCredentials(
           self.session.token_type,
@@ -127,9 +136,10 @@ class TidalLogin:
         raise LoginError('Login time has expired', self.login_uri)
     else:
       try:
+        self._login_future = None
         self.session.load_oauth_session(self.credentials.token_type, self.credentials.access_token, self.credentials.refresh_token, self.credentials.expiry_time)
       except BaseException as e:
-        raise LoginError('There was a problem logging into TIDAL', e.args)
+        raise LoginError(e.args[0])
 
 # Methods for communicating with TIDAL using the TidalLogin
 class TidalTransfer:

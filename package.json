@@ -4,7 +4,8 @@
   "description": "A simple Python web appplication for porting Spotify playlists to TIDAL. \r It uses Flask, SQLAlchemy and Socket-IO for the backend and simple HTML, Bootstrap theme and React for the frontend. The matching algorithm will pick master quality track versions where found.",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "babel": "babel --watch app/static/src --out-dir app/static/ --presets react-app/prod"
   },
   "repository": {
     "type": "git",

@@ -4,7 +4,7 @@ from . import main
 from app import db
 from ..models import User
 from ..utils import check_url
-from .classes import TidalLogin, SpotifyClient
+from .classes import TidalLogin, SpotifyClient, Err, LoginError
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -32,31 +32,41 @@ def index():
 
     return render_template('index.html')
   except TypeError as e:
-    return render_template('error.html', msg=e.args[0])
+    return render_template('error.html', msg=e.args[0], submsg=Err.INVALID_URL)
+  except LoginError as e:
+    return render_template('error.html', msg=e.args[0], submsg=Err.LOGIN_ERR)
+  except BaseException as e:
+    return render_template('error.html', msg=e.args[0], submsg=Err.UNKNOWN_ERR)
+
 
 @main.route("/transfer")
 def transfer():
   id = session.get('id')
   user = db.session.execute(db.select(User).filter_by(id=id)).first()
 
-  if not user:
-    login: TidalLogin = tidal_users[id]
-    login.login()
-    user = User(
-      id=session['id'],
-      token_type=login.credentials.token_type,        #type: ignore
-      access_token=login.credentials.access_token,    #type: ignore
-      refresh_token=login.credentials.refresh_token,  #type: ignore
-      expiry_time=login.credentials.expiry_time       #type: ignore
-      )
+  try:
+    if not user:
+      login: TidalLogin = tidal_users[id]
+      login.login()
+      user = User(
+        id=session['id'],
+        token_type=login.credentials.token_type,        #type: ignore
+        access_token=login.credentials.access_token,    #type: ignore
+        refresh_token=login.credentials.refresh_token,  #type: ignore
+        expiry_time=login.credentials.expiry_time       #type: ignore
+        )
 
-    db.session.add(user)
-    db.session.commit()
+      db.session.add(user)
+      db.session.commit()
 
-    del tidal_users[id]
+      del tidal_users[id]
 
-    return redirect(url_for('main.transfer'))
+      return redirect(url_for('main.transfer'))
 
-  playlist = client.get_playlist(session['splid'])
+    playlist = client.get_playlist(session['splid'])
 
-  return render_template('transfer.html', playlist_name=playlist.name) if playlist else render_template('error.html', msg='Invalid Spotify URL')
+    return render_template('transfer.html', playlist_name=playlist.name) if playlist else render_template('error.html', msg='Invalid Spotify URL', submsg=Err.INVALID_URL)
+  except LoginError as e:
+    return render_template('error.html', msg=e.args[0], submsg=Err.LOGIN_ERR)
+  except BaseException as e:
+    return render_template('error.html', msg=e.args[0], submsg=Err.UNKNOWN_ERR)

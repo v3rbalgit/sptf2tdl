@@ -35,14 +35,14 @@ var Warning = function (_React$Component) {
         { className: "m-5" },
         React.createElement(
           "p",
-          { className: "bg-danger rounded p-5" },
+          { className: "bg-warning rounded p-5" },
           React.createElement(
             "a",
             { href: "{{ link }}", target: "_blank", id: "tidal-link", onClick: this.handleClick },
             React.createElement(
               "strong",
               null,
-              "Click here"
+              "CLICK HERE"
             )
           ),
           ' ',
