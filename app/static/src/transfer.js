@@ -85,7 +85,7 @@ function SubHeader(props) {
   React.useEffect(() => {
     if (!props.exists && !props.empty) {
       setText(
-        'Please wait until the process finishes. Depending on length of the playlist, this may take sime time...'
+        'Please wait until the process finishes. Depending on length of the playlist, this may take some time...'
       );
     }
     if (props.empty) {

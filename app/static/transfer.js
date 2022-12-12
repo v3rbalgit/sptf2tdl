@@ -121,7 +121,7 @@ function SubHeader(props) {
 
   React.useEffect(function () {
     if (!props.exists && !props.empty) {
-      setText('Please wait until the process finishes. Depending on length of the playlist, this may take sime time...');
+      setText('Please wait until the process finishes. Depending on length of the playlist, this may take some time...');
     }
     if (props.empty) {
       setText('Playlist you entered doesn\'t contain any tracks. Would you like to transfer another playlist?');
