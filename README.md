@@ -14,3 +14,8 @@ It uses Flask, SQLAlchemy and Socket-IO for the backend and simple HTML, Bootstr
 - the matching algorithm will sometimes mismatch tracks, specifically some classical tracks which have complicated names
 - tracks which are restricted in your market (country) will not be added to the TIDAL playlist
 - *(NOTE)* node.js is used only for Babel conversion of React JSX in the static/src directory
+
+![home](https://user-images.githubusercontent.com/38385475/207037038-4e074684-105b-41b4-98ab-2d516e880a5c.png)
+![error](https://user-images.githubusercontent.com/38385475/207037032-5cfbeb60-e170-48f1-b8bd-77da43e37743.png)
+![transfer](https://user-images.githubusercontent.com/38385475/207037041-7b85170a-41d2-4b02-a383-9efcd88299a3.png)
+![success](https://user-images.githubusercontent.com/38385475/207037040-fc88ef55-aaad-4898-b67d-9804b78df07d.png)
