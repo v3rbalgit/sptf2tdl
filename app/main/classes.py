@@ -163,7 +163,7 @@ class TidalTransfer:
     return found_playlist[0] if found_playlist else None
 
   # Find a track from Spotify playlist on TIDAL
-  def find_track(self, track: SpotifyTrack) -> Optional[Track]:
+  async def find_track(self, track: SpotifyTrack) -> Optional[Track]:
     tracks_found: List[Track] = []
 
     # Prepare search words

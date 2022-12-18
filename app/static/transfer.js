@@ -37,10 +37,7 @@ function NotFoundInfo(props) {
         return React.createElement(
           'p',
           { key: i, className: 'text-muted' },
-          track.index,
-          '/',
-          props.total,
-          ' "',
+          '"',
           track.name,
           '" by ',
           track.artists
@@ -60,29 +57,11 @@ function TrackInfo(props) {
       null,
       React.createElement(
         'div',
-        { className: 'progress' },
-        React.createElement('div', {
-          className: 'progress-bar',
-          role: 'progressbar',
-          'aria-label': 'Transfer progress',
-          style: {
-            width: Math.round(props.nextTrack.index / props.total * 100).toString() + '%'
-          },
-          'aria-valuenow': Math.round(props.nextTrack.index / props.total * 100),
-          'aria-valuemin': '0',
-          'aria-valuemax': '100'
-        })
-      ),
-      React.createElement(
-        'div',
         { className: 'justify-content-center' },
         React.createElement(
           'h3',
-          { className: 'd-block mb-5 mt-5' },
-          props.nextTrack.index,
-          '/',
-          props.total,
-          ' "',
+          { className: 'd-block mx-auto mb-5 mt-5' },
+          '"',
           props.nextTrack.name,
           '" by ',
           props.nextTrack.artists
@@ -221,7 +200,7 @@ function TransferInfo(props) {
         props.playlist,
         '" have been successfully transferred to your TIDAL account.'
       ),
-      props.notFound.length != 0 && React.createElement(NotFoundInfo, { notFound: props.notFound, total: props.total })
+      props.notFound.length != 0 && React.createElement(NotFoundInfo, { notFound: props.notFound })
     ),
     React.createElement(
       'div',
@@ -274,7 +253,6 @@ function Content() {
 
     socket.on('next_track', function (msg) {
       updateNextTrack({
-        index: msg.index + 1,
         name: msg.name,
         artists: msg.artists,
         image: msg.image
@@ -283,7 +261,6 @@ function Content() {
 
     socket.on('no_match', function (msg) {
       updateNotFound([].concat(_toConsumableArray(notFound), [{
-        index: msg.index + 1,
         name: msg.name,
         artists: msg.artists
       }]));

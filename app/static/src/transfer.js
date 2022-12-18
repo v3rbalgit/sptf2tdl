@@ -25,7 +25,7 @@ function NotFoundInfo(props) {
         {props.notFound.map((track, i) => {
           return (
             <p key={i} className="text-muted">
-              "{track.name}" by {track.artists} ({track.index}/{props.total})
+              "{track.name}" by {track.artists}
             </p>
           );
         })}
@@ -40,22 +40,22 @@ function TrackInfo(props) {
     <div className="row">
       {props.nextTrack && (
         <div>
-          <div className="progress">
+          {/* <div className="progress">
             <div
               className="progress-bar"
               role="progressbar"
               aria-label="Transfer progress"
               style={{
-                width: Math.round((props.nextTrack.index / props.total) * 100).toString() + '%',
+                width: Math.round((props.count / props.total) * 100).toString() + '%',
               }}
-              aria-valuenow={Math.round((props.nextTrack.index / props.total) * 100)}
+              aria-valuenow={Math.round((props.count / props.total) * 100)}
               aria-valuemin="0"
               aria-valuemax="100"
             ></div>
-          </div>
+          </div> */}
           <div className="justify-content-center">
-            <h3 className="d-block mb-5 mt-5">
-              {props.nextTrack.index}/{props.total} "{props.nextTrack.name}" by {props.nextTrack.artists}
+            <h3 className="d-block mx-auto mb-5 mt-5">
+              "{props.nextTrack.name}" by {props.nextTrack.artists}
             </h3>
             <img
               src={props.nextTrack.image}
@@ -159,7 +159,7 @@ function TransferInfo(props) {
             : 'All tracks in'}{' '}
           playlist "{props.playlist}" have been successfully transferred to your TIDAL account.
         </p>
-        {props.notFound.length != 0 && <NotFoundInfo notFound={props.notFound} total={props.total} />}
+        {props.notFound.length != 0 && <NotFoundInfo notFound={props.notFound} />}
       </div>
       <div className="d-flex justify-content-center mt-3">
         <Button text="Transfer Another" href="/" />
@@ -196,7 +196,6 @@ function Content() {
 
     socket.on('next_track', (msg) => {
       updateNextTrack({
-        index: msg.index + 1,
         name: msg.name,
         artists: msg.artists,
         image: msg.image,
@@ -207,7 +206,6 @@ function Content() {
       updateNotFound([
         ...notFound,
         {
-          index: msg.index + 1,
           name: msg.name,
           artists: msg.artists,
         },
