@@ -65,6 +65,10 @@ def get_playlist(overwrite: bool):
 
     tidal_playlist: Optional[UserPlaylist] = transfer.create_playlist(spotify_playlist)
 
+    if not tidal_playlist:
+      emit('playlist_exists')
+      return None
+
     tasks = []
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
@@ -77,7 +81,6 @@ def get_playlist(overwrite: bool):
     found_tracks = loop.run_until_complete(task_group)
     loop.close()
 
-    if tidal_playlist:
-      tidal_playlist.add([track.id for track in found_tracks if track])
+    tidal_playlist.add([track.id for track in found_tracks if track])
 
     emit('finished')
