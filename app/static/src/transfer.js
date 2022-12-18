@@ -25,7 +25,7 @@ function NotFoundInfo(props) {
         {props.notFound.map((track, i) => {
           return (
             <p key={i} className="text-muted">
-              "{track.name}" by {track.artists} ({track.index}/{props.total})
+              "{track.name}" by {track.artists}
             </p>
           );
         })}
@@ -46,16 +46,16 @@ function TrackInfo(props) {
               role="progressbar"
               aria-label="Transfer progress"
               style={{
-                width: Math.round((props.nextTrack.index / props.total) * 100).toString() + '%',
+                width: Math.round((props.count / props.total) * 100).toString() + '%',
               }}
-              aria-valuenow={Math.round((props.nextTrack.index / props.total) * 100)}
+              aria-valuenow={Math.round((props.count / props.total) * 100)}
               aria-valuemin="0"
               aria-valuemax="100"
             ></div>
           </div>
           <div className="justify-content-center">
-            <h3 className="d-block mb-5 mt-5">
-              {props.nextTrack.index}/{props.total} "{props.nextTrack.name}" by {props.nextTrack.artists}
+            <h3 className="d-block mx-auto mb-5 mt-5">
+              "{props.nextTrack.name}" by {props.nextTrack.artists}
             </h3>
             <img
               src={props.nextTrack.image}
@@ -154,12 +154,12 @@ function TransferInfo(props) {
       </div>
       <div className="row mt-3">
         <p className="text-center">
-          {props.notFound
+          {props.notFound.length != 0
             ? props.total - props.notFound.length + ' out of ' + props.total + ' tracks in'
             : 'All tracks in'}{' '}
           playlist "{props.playlist}" have been successfully transferred to your TIDAL account.
         </p>
-        {props.notFound.length != 0 && <NotFoundInfo notFound={props.notFound} total={props.total} />}
+        {props.notFound.length != 0 && <NotFoundInfo notFound={props.notFound} />}
       </div>
       <div className="d-flex justify-content-center mt-3">
         <Button text="Transfer Another" href="/" />
@@ -182,6 +182,8 @@ function Content() {
 
   const [nextTrack, updateNextTrack] = React.useState(null);
 
+  const [trackCount, updateTrackCount] = React.useState(0);
+
   const [notFound, updateNotFound] = React.useState([]);
 
   const [finished, updateFinished] = React.useState(false);
@@ -195,8 +197,8 @@ function Content() {
     });
 
     socket.on('next_track', (msg) => {
+      updateTrackCount((prevTrackCount) => prevTrackCount + 1);
       updateNextTrack({
-        index: msg.index + 1,
         name: msg.name,
         artists: msg.artists,
         image: msg.image,
@@ -207,7 +209,6 @@ function Content() {
       updateNotFound([
         ...notFound,
         {
-          index: msg.index + 1,
           name: msg.name,
           artists: msg.artists,
         },
@@ -256,6 +257,7 @@ function Content() {
       playlistEmpty: false,
     });
     updateNotFound([]);
+    updateTrackCount(0);
     updateNextTrack(null);
 
     socket.emit('start_transfer', true);
@@ -275,7 +277,7 @@ function Content() {
           overwriteEvent={overwrite}
         />
         {!playlistState.playlistExists && !playlistState.playlistEmpty && (
-          <TrackInfo nextTrack={nextTrack} total={playlistInfo.totalTracks} />
+          <TrackInfo nextTrack={nextTrack} total={playlistInfo.totalTracks} count={trackCount} />
         )}
       </div>
     );

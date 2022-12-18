@@ -3,6 +3,7 @@ from flask_socketio import emit
 from typing import List, Optional
 
 from .. import socketio
+import asyncio
 from dotenv import load_dotenv
 load_dotenv()
 from os import getenv
@@ -49,20 +50,34 @@ def get_playlist(overwrite: bool):
 
     tidal_playlist: Optional[UserPlaylist] = transfer.create_playlist(spotify_playlist)
 
-    for i, track in enumerate(tracks):
-      data = {
-        'index': i,
-        'name': track.name,
-        'artists': ", ".join([artist for artist in track.artists]),
-        'image': track.image
-      }
-      emit('next_track', data)
+    tasks = []
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
 
-      tidal_track: Optional[Track] = transfer.find_track(track)
+    for track in tracks:
+      async def find_track(t):
+        data = {
+          'name': t.name,
+          'artists': ", ".join([artist for artist in t.artists]),
+          'image': t.image
+        }
+        emit('next_track', data)
 
-      if tidal_track and tidal_playlist:
-        tidal_playlist.add([tidal_track.id])
-      else:
-        emit('no_match', data)
+        tidal_track: Optional[Track] = await transfer.find_track(t)
+
+        if not tidal_track:
+          emit('no_match', data)
+        return tidal_track
+
+      task = loop.create_task(find_track(track))
+      tasks.append(task)
+
+    task_group = asyncio.gather(*tasks, return_exceptions=True)
+    found_tracks = loop.run_until_complete(task_group)
+
+    if tidal_playlist:
+      tidal_playlist.add([track.id for track in found_tracks if track])
+
+    loop.close()
 
     emit('finished')

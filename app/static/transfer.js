@@ -37,10 +37,7 @@ function NotFoundInfo(props) {
         return React.createElement(
           'p',
           { key: i, className: 'text-muted' },
-          track.index,
-          '/',
-          props.total,
-          ' "',
+          '"',
           track.name,
           '" by ',
           track.artists
@@ -66,9 +63,9 @@ function TrackInfo(props) {
           role: 'progressbar',
           'aria-label': 'Transfer progress',
           style: {
-            width: Math.round(props.nextTrack.index / props.total * 100).toString() + '%'
+            width: Math.round(props.count / props.total * 100).toString() + '%'
           },
-          'aria-valuenow': Math.round(props.nextTrack.index / props.total * 100),
+          'aria-valuenow': Math.round(props.count / props.total * 100),
           'aria-valuemin': '0',
           'aria-valuemax': '100'
         })
@@ -78,11 +75,8 @@ function TrackInfo(props) {
         { className: 'justify-content-center' },
         React.createElement(
           'h3',
-          { className: 'd-block mb-5 mt-5' },
-          props.nextTrack.index,
-          '/',
-          props.total,
-          ' "',
+          { className: 'd-block mx-auto mb-5 mt-5' },
+          '"',
           props.nextTrack.name,
           '" by ',
           props.nextTrack.artists
@@ -215,13 +209,13 @@ function TransferInfo(props) {
       React.createElement(
         'p',
         { className: 'text-center' },
-        props.notFound ? props.total - props.notFound.length + ' out of ' + props.total + ' tracks in' : 'All tracks in',
+        props.notFound.length != 0 ? props.total - props.notFound.length + ' out of ' + props.total + ' tracks in' : 'All tracks in',
         ' ',
         'playlist "',
         props.playlist,
         '" have been successfully transferred to your TIDAL account.'
       ),
-      props.notFound.length != 0 && React.createElement(NotFoundInfo, { notFound: props.notFound, total: props.total })
+      props.notFound.length != 0 && React.createElement(NotFoundInfo, { notFound: props.notFound })
     ),
     React.createElement(
       'div',
@@ -254,15 +248,20 @@ function Content() {
       nextTrack = _React$useState10[0],
       updateNextTrack = _React$useState10[1];
 
-  var _React$useState11 = React.useState([]),
+  var _React$useState11 = React.useState(0),
       _React$useState12 = _slicedToArray(_React$useState11, 2),
-      notFound = _React$useState12[0],
-      updateNotFound = _React$useState12[1];
+      trackCount = _React$useState12[0],
+      updateTrackCount = _React$useState12[1];
 
-  var _React$useState13 = React.useState(false),
+  var _React$useState13 = React.useState([]),
       _React$useState14 = _slicedToArray(_React$useState13, 2),
-      finished = _React$useState14[0],
-      updateFinished = _React$useState14[1];
+      notFound = _React$useState14[0],
+      updateNotFound = _React$useState14[1];
+
+  var _React$useState15 = React.useState(false),
+      _React$useState16 = _slicedToArray(_React$useState15, 2),
+      finished = _React$useState16[0],
+      updateFinished = _React$useState16[1];
 
   React.useEffect(function () {
     socket.on('playlist_info', function (msg) {
@@ -273,8 +272,10 @@ function Content() {
     });
 
     socket.on('next_track', function (msg) {
+      updateTrackCount(function (prevTrackCount) {
+        return prevTrackCount + 1;
+      });
       updateNextTrack({
-        index: msg.index + 1,
         name: msg.name,
         artists: msg.artists,
         image: msg.image
@@ -283,7 +284,6 @@ function Content() {
 
     socket.on('no_match', function (msg) {
       updateNotFound([].concat(_toConsumableArray(notFound), [{
-        index: msg.index + 1,
         name: msg.name,
         artists: msg.artists
       }]));
@@ -329,6 +329,7 @@ function Content() {
       playlistEmpty: false
     });
     updateNotFound([]);
+    updateTrackCount(0);
     updateNextTrack(null);
 
     socket.emit('start_transfer', true);
@@ -348,7 +349,7 @@ function Content() {
         empty: playlistState.playlistEmpty,
         overwriteEvent: overwrite
       }),
-      !playlistState.playlistExists && !playlistState.playlistEmpty && React.createElement(TrackInfo, { nextTrack: nextTrack, total: playlistInfo.totalTracks })
+      !playlistState.playlistExists && !playlistState.playlistEmpty && React.createElement(TrackInfo, { nextTrack: nextTrack, total: playlistInfo.totalTracks, count: trackCount })
     );
   } else {
     return React.createElement(
