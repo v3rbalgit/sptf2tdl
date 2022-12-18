@@ -25,7 +25,7 @@ function NotFoundInfo(props) {
         {props.notFound.map((track, i) => {
           return (
             <p key={i} className="text-muted">
-              "{track.name}" by {track.artists}
+              {track.index}/{props.total} "{track.name}" by {track.artists}
             </p>
           );
         })}
@@ -159,7 +159,7 @@ function TransferInfo(props) {
             : 'All tracks in'}{' '}
           playlist "{props.playlist}" have been successfully transferred to your TIDAL account.
         </p>
-        {props.notFound.length != 0 && <NotFoundInfo notFound={props.notFound} />}
+        {props.notFound.length != 0 && <NotFoundInfo notFound={props.notFound} total={props.total} />}
       </div>
       <div className="d-flex justify-content-center mt-3">
         <Button text="Transfer Another" href="/" />
@@ -209,6 +209,7 @@ function Content() {
       updateNotFound([
         ...notFound,
         {
+          index: msg.index + 1,
           name: msg.name,
           artists: msg.artists,
         },

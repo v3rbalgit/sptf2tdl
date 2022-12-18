@@ -37,7 +37,10 @@ function NotFoundInfo(props) {
         return React.createElement(
           'p',
           { key: i, className: 'text-muted' },
-          '"',
+          track.index,
+          '/',
+          props.total,
+          ' "',
           track.name,
           '" by ',
           track.artists
@@ -215,7 +218,7 @@ function TransferInfo(props) {
         props.playlist,
         '" have been successfully transferred to your TIDAL account.'
       ),
-      props.notFound.length != 0 && React.createElement(NotFoundInfo, { notFound: props.notFound })
+      props.notFound.length != 0 && React.createElement(NotFoundInfo, { notFound: props.notFound, total: props.total })
     ),
     React.createElement(
       'div',
@@ -284,6 +287,7 @@ function Content() {
 
     socket.on('no_match', function (msg) {
       updateNotFound([].concat(_toConsumableArray(notFound), [{
+        index: msg.index + 1,
         name: msg.name,
         artists: msg.artists
       }]));

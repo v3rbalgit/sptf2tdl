@@ -54,9 +54,10 @@ def get_playlist(overwrite: bool):
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
 
-    for track in tracks:
-      async def find_track(t):
+    for i, track in enumerate(tracks):
+      async def find_track(j, t):
         data = {
+          'index': j,
           'name': t.name,
           'artists': ", ".join([artist for artist in t.artists]),
           'image': t.image
@@ -69,7 +70,7 @@ def get_playlist(overwrite: bool):
           emit('no_match', data)
         return tidal_track
 
-      task = loop.create_task(find_track(track))
+      task = loop.create_task(find_track(i, track))
       tasks.append(task)
 
     task_group = asyncio.gather(*tasks, return_exceptions=True)
