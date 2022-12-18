@@ -57,6 +57,21 @@ function TrackInfo(props) {
       null,
       React.createElement(
         'div',
+        { className: 'progress' },
+        React.createElement('div', {
+          className: 'progress-bar',
+          role: 'progressbar',
+          'aria-label': 'Transfer progress',
+          style: {
+            width: Math.round(props.count / props.total * 100).toString() + '%'
+          },
+          'aria-valuenow': Math.round(props.count / props.total * 100),
+          'aria-valuemin': '0',
+          'aria-valuemax': '100'
+        })
+      ),
+      React.createElement(
+        'div',
         { className: 'justify-content-center' },
         React.createElement(
           'h3',
@@ -194,7 +209,7 @@ function TransferInfo(props) {
       React.createElement(
         'p',
         { className: 'text-center' },
-        props.notFound ? props.total - props.notFound.length + ' out of ' + props.total + ' tracks in' : 'All tracks in',
+        props.notFound.length != 0 ? props.total - props.notFound.length + ' out of ' + props.total + ' tracks in' : 'All tracks in',
         ' ',
         'playlist "',
         props.playlist,
@@ -233,15 +248,20 @@ function Content() {
       nextTrack = _React$useState10[0],
       updateNextTrack = _React$useState10[1];
 
-  var _React$useState11 = React.useState([]),
+  var _React$useState11 = React.useState(0),
       _React$useState12 = _slicedToArray(_React$useState11, 2),
-      notFound = _React$useState12[0],
-      updateNotFound = _React$useState12[1];
+      trackCount = _React$useState12[0],
+      updateTrackCount = _React$useState12[1];
 
-  var _React$useState13 = React.useState(false),
+  var _React$useState13 = React.useState([]),
       _React$useState14 = _slicedToArray(_React$useState13, 2),
-      finished = _React$useState14[0],
-      updateFinished = _React$useState14[1];
+      notFound = _React$useState14[0],
+      updateNotFound = _React$useState14[1];
+
+  var _React$useState15 = React.useState(false),
+      _React$useState16 = _slicedToArray(_React$useState15, 2),
+      finished = _React$useState16[0],
+      updateFinished = _React$useState16[1];
 
   React.useEffect(function () {
     socket.on('playlist_info', function (msg) {
@@ -252,6 +272,9 @@ function Content() {
     });
 
     socket.on('next_track', function (msg) {
+      updateTrackCount(function (prevTrackCount) {
+        return prevTrackCount + 1;
+      });
       updateNextTrack({
         name: msg.name,
         artists: msg.artists,
@@ -306,6 +329,7 @@ function Content() {
       playlistEmpty: false
     });
     updateNotFound([]);
+    updateTrackCount(0);
     updateNextTrack(null);
 
     socket.emit('start_transfer', true);
@@ -325,7 +349,7 @@ function Content() {
         empty: playlistState.playlistEmpty,
         overwriteEvent: overwrite
       }),
-      !playlistState.playlistExists && !playlistState.playlistEmpty && React.createElement(TrackInfo, { nextTrack: nextTrack, total: playlistInfo.totalTracks })
+      !playlistState.playlistExists && !playlistState.playlistEmpty && React.createElement(TrackInfo, { nextTrack: nextTrack, total: playlistInfo.totalTracks, count: trackCount })
     );
   } else {
     return React.createElement(

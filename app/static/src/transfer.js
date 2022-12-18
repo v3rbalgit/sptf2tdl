@@ -40,7 +40,7 @@ function TrackInfo(props) {
     <div className="row">
       {props.nextTrack && (
         <div>
-          {/* <div className="progress">
+          <div className="progress">
             <div
               className="progress-bar"
               role="progressbar"
@@ -52,7 +52,7 @@ function TrackInfo(props) {
               aria-valuemin="0"
               aria-valuemax="100"
             ></div>
-          </div> */}
+          </div>
           <div className="justify-content-center">
             <h3 className="d-block mx-auto mb-5 mt-5">
               "{props.nextTrack.name}" by {props.nextTrack.artists}
@@ -154,7 +154,7 @@ function TransferInfo(props) {
       </div>
       <div className="row mt-3">
         <p className="text-center">
-          {props.notFound
+          {props.notFound.length != 0
             ? props.total - props.notFound.length + ' out of ' + props.total + ' tracks in'
             : 'All tracks in'}{' '}
           playlist "{props.playlist}" have been successfully transferred to your TIDAL account.
@@ -182,6 +182,8 @@ function Content() {
 
   const [nextTrack, updateNextTrack] = React.useState(null);
 
+  const [trackCount, updateTrackCount] = React.useState(0);
+
   const [notFound, updateNotFound] = React.useState([]);
 
   const [finished, updateFinished] = React.useState(false);
@@ -195,6 +197,7 @@ function Content() {
     });
 
     socket.on('next_track', (msg) => {
+      updateTrackCount((prevTrackCount) => prevTrackCount + 1);
       updateNextTrack({
         name: msg.name,
         artists: msg.artists,
@@ -254,6 +257,7 @@ function Content() {
       playlistEmpty: false,
     });
     updateNotFound([]);
+    updateTrackCount(0);
     updateNextTrack(null);
 
     socket.emit('start_transfer', true);
@@ -273,7 +277,7 @@ function Content() {
           overwriteEvent={overwrite}
         />
         {!playlistState.playlistExists && !playlistState.playlistEmpty && (
-          <TrackInfo nextTrack={nextTrack} total={playlistInfo.totalTracks} />
+          <TrackInfo nextTrack={nextTrack} total={playlistInfo.totalTracks} count={trackCount} />
         )}
       </div>
     );
