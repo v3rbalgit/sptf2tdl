@@ -17,6 +17,21 @@ from ..models import User
 
 client = SpotifyClient(getenv('client_id', ''), getenv('client_secret', ''))
 
+async def handle_track(transfer: TidalTransfer, i: int, track: SpotifyTrack):
+  data = {
+    'index': i,
+    'name': track.name,
+    'artists': ", ".join([artist for artist in track.artists]),
+    'image': track.image
+  }
+  emit('next_track', data)
+
+  tidal_track: Optional[Track] = await transfer.find_track(track)
+
+  if not tidal_track:
+    emit('no_match', data)
+  return tidal_track
+
 @socketio.on('start_transfer', namespace='/transfer')
 def get_playlist(overwrite: bool):
   id = session.get('id')
@@ -55,22 +70,7 @@ def get_playlist(overwrite: bool):
     asyncio.set_event_loop(loop)
 
     for i, track in enumerate(tracks):
-      async def find_track(j, t):
-        data = {
-          'index': j,
-          'name': t.name,
-          'artists': ", ".join([artist for artist in t.artists]),
-          'image': t.image
-        }
-        emit('next_track', data)
-
-        tidal_track: Optional[Track] = await transfer.find_track(t)
-
-        if not tidal_track:
-          emit('no_match', data)
-        return tidal_track
-
-      task = loop.create_task(find_track(i, track))
+      task = loop.create_task(handle_track(transfer, i, track))
       tasks.append(task)
 
     task_group = asyncio.gather(*tasks, return_exceptions=True)
