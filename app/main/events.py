@@ -21,7 +21,7 @@ async def handle_track(transfer: TidalTransfer, i: int, track: SpotifyTrack):
   data = {
     'index': i,
     'name': track.name,
-    'artists': ", ".join([artist for artist in track.artists]),
+    'artists': ", ".join(track.artists),
     'image': track.image
   }
   emit('next_track', data)
@@ -75,10 +75,9 @@ def get_playlist(overwrite: bool):
 
     task_group = asyncio.gather(*tasks, return_exceptions=True)
     found_tracks = loop.run_until_complete(task_group)
+    loop.close()
 
     if tidal_playlist:
       tidal_playlist.add([track.id for track in found_tracks if track])
-
-    loop.close()
 
     emit('finished')
