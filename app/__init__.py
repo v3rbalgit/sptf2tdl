@@ -10,7 +10,7 @@ def create_app(debug=False):
     """Create an application."""
     app = Flask(__name__)
     app.debug = debug
-    app.config['SECRET_KEY'] = 'gjr39dkjn344_!67#'
+    app.config['SECRET_KEY'] = os.urandom(64)
     app.config['CORS_HEADERS'] = 'Content-Type'
     app.config['SQLALCHEMY_DATABASE_URI'] =\
     'sqlite:///' + os.path.join(os.path.abspath(os.path.dirname(__file__)), 'data.sqlite')

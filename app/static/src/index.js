@@ -6,9 +6,9 @@ class Warning extends React.Component {
   };
   render() {
     return (
-      <div className="m-5">
-        <p className="bg-warning rounded p-5">
-          <a href="{{ link }}" target="_blank" id="tidal-link" onClick={this.handleClick}>
+      <div className="m-5 w-50">
+        <p className="bg-warning rounded p-3 text-center">
+          Please <a href={LOGIN_URI} target="_blank" id="tidal-link" onClick={this.handleClick}>
             <strong>CLICK HERE</strong>
           </a>{' '}
           to login to TIDAL

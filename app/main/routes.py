@@ -4,13 +4,17 @@ from . import main
 from app import db
 from ..models import User
 from ..utils import check_url
-from .classes import TidalLogin, SpotifyClient, Err, LoginError
+from .classes import TidalLogin, SpotifyClient, LoginError
 
 from dotenv import load_dotenv
 load_dotenv()
 from os import getenv
 
 from uuid import uuid4
+
+INVALID_URL = "You entered an invalid Spotify link. Check the URL and try again."
+LOGIN_ERR = "There was a problem with your TIDAL login. Please try logging in again."
+UNKNOWN_ERR = "Unknown error has occured. Please try again later."
 
 client = SpotifyClient(getenv('client_id', ''), getenv('client_secret', ''))
 tidal_users = {}
@@ -32,11 +36,11 @@ def index():
 
     return render_template('index.html')
   except TypeError as e:
-    return render_template('error.html', msg=e.args[0], submsg=Err.INVALID_URL)
+    return render_template('error.html', msg=e.args[0], submsg=INVALID_URL)
   except LoginError as e:
-    return render_template('error.html', msg=e.args[0], submsg=Err.LOGIN_ERR)
+    return render_template('error.html', msg=e.args[0], submsg=LOGIN_ERR)
   except BaseException as e:
-    return render_template('error.html', msg=e.args[0], submsg=Err.UNKNOWN_ERR)
+    return render_template('error.html', msg=e.args[0], submsg=UNKNOWN_ERR)
 
 
 @main.route("/transfer")
@@ -65,8 +69,8 @@ def transfer():
 
     playlist = client.get_playlist(session['splid'])
 
-    return render_template('transfer.html', playlist_name=playlist.name) if playlist else render_template('error.html', msg='Invalid Spotify URL', submsg=Err.INVALID_URL)
+    return render_template('transfer.html', playlist_name=playlist.name) if playlist else render_template('error.html', msg='Invalid Spotify URL', submsg=INVALID_URL)
   except LoginError as e:
-    return render_template('error.html', msg=e.args[0], submsg=Err.LOGIN_ERR)
+    return render_template('error.html', msg=e.args[0], submsg=LOGIN_ERR)
   except BaseException as e:
-    return render_template('error.html', msg=e.args[0], submsg=Err.UNKNOWN_ERR)
+    return render_template('error.html', msg=e.args[0], submsg=UNKNOWN_ERR)

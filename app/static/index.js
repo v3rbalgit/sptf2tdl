@@ -32,13 +32,14 @@ var Warning = function (_React$Component) {
     value: function render() {
       return React.createElement(
         "div",
-        { className: "m-5" },
+        { className: "m-5 w-50" },
         React.createElement(
           "p",
-          { className: "bg-warning rounded p-5" },
+          { className: "bg-warning rounded p-3 text-center" },
+          "Please ",
           React.createElement(
             "a",
-            { href: "{{ link }}", target: "_blank", id: "tidal-link", onClick: this.handleClick },
+            { href: LOGIN_URI, target: "_blank", id: "tidal-link", onClick: this.handleClick },
             React.createElement(
               "strong",
               null,

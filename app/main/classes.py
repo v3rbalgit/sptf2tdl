@@ -2,16 +2,9 @@ from dataclasses import dataclass
 from typing import List, Optional
 from datetime import datetime
 from app.utils import filter_name
-from enum import StrEnum
 
 import spotify, tidalapi, asyncio
 from tidalapi import Track, UserPlaylist, Quality
-
-# Error enum
-class Err(StrEnum):
-  INVALID_URL = "You entered an invalid Spotify link. Check the URL and try again."
-  LOGIN_ERR = "There was a problem with your TIDAL login. Please try logging in again."
-  UNKNOWN_ERR = "Unknown error has occured. Please try again later."
 
 # Error classes
 class LoginError(ValueError):
