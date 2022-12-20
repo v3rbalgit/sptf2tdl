@@ -3,6 +3,7 @@ A simple Python web appplication for transferring Spotify playlists to TIDAL.
 It uses Flask, SQLAlchemy and Socket-IO for the backend and simple HTML, Bootstrap theme and React for the frontend. The matching algorithm will pick master quality track versions where found.
 
 ### Usage:
+**Option 1:**
 0. Create `.env` file in root directory with `client_id="???"` and `client_secret="???"` values obtained via [Spotify developer portal](https://developer.spotify.com/dashboard/applications)
 
 **Option 1:**
@@ -12,7 +13,8 @@ It uses Flask, SQLAlchemy and Socket-IO for the backend and simple HTML, Bootstr
 4. *(First use)* After entering playlist link for the first time, you will be prompted to login to TIDAL. Please **CLICK** the link that you will be provided (don't right click and open it in a new tab) otherwise the application might not work properly
 
 **Option 2:**
-1. Use the provided *Dockerfile* to run the app in your Docker
+0. Obtain your `client_id` and `client_secret` values via [Spotify developer portal](https://developer.spotify.com/dashboard/applications)
+1. Run the container using `-e client_id=XYZ -e client_secret=XYZ`flags with values obtained from Spotify, optionally map ports using `-p 80:5000` and access the application in browser at `localhost` or `localhost:5000`
 
 ### Known issues/limitations
 - Spotify playlists must be **public** in order to transfer them
