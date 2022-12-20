@@ -4,12 +4,14 @@ It uses Flask, SQLAlchemy and Socket-IO for the backend and simple HTML, Bootstr
 
 ### Usage:
 0. Create `.env` file in root directory with `client_id="???"` and `client_secret="???"` values obtained via [Spotify developer portal](https://developer.spotify.com/dashboard/applications)
-# Option 1:
+
+**Option 1:**
 1. Install the requirements using `pip install -r "requirements.txt` (ideally in a separate virtual environment)
 2. Use `flask run server.py` to start the server
 3. Go to `localhost:5000` or `127.0.0.1:5000` in your web browser to use the application
 4. *(First use)* After entering playlist link for the first time, you will be prompted to login to TIDAL. Please **CLICK** the link that you will be provided (don't right click and open it in a new tab) otherwise the application might not work properly
-# Option 2:
+
+**Option 2:**
 1. Use the provided *Dockerfile* to run the app in your Docker
 
 ### Known issues/limitations
