@@ -6,7 +6,9 @@ services:
     build: .
     ports:
       - 80:5000
-    env_file: database.conf
+    env_file:
+      - .env
+      - database.conf
     depends_on:
       - 'database'
 

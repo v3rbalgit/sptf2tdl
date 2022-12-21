@@ -9,10 +9,6 @@ ENV PYTHONDONTWRITEBYTECODE=1
 # Turns off buffering for easier container logging
 ENV PYTHONUNBUFFERED=1
 
-# Spotify client credentials
-ENV client_id="30cfd4110fdf4c8d853cdd305f8abd9c"
-ENV client_secret="af54048f679e424fa4a4da6edecb4906"
-
 # Install pip requirements
 COPY requirements.txt .
 RUN python -m pip install -r requirements.txt
