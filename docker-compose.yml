@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  app:
+    container_name: flask
+    build: .
+    ports:
+      - 80:5000
+    env_file: database.conf
+    depends_on:
+      - 'database'
+
+  database:
+    container_name: postgres
+    image: postgres:latest
+    ports:
+      - 5432:5432
+    env_file: database.conf
+    volumes:
+      - sptf2tdl-user-data:/var/lib/postgresql/data
+
+volumes:
+  sptf2tdl-user-data:
+    external: true
